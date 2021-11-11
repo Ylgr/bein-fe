@@ -10,7 +10,6 @@ import Card from "components/Card/Card.js";
 import CardHeader from "components/Card/CardHeader.js";
 import CardBody from "components/Card/CardBody.js";
 import CardAvatar from "components/Card/CardAvatar.js";
-
 import avatar from "assets/img/faces/marc.jpg";
 import imgContent from "assets/img/sidebar-2.jpg";
 import {Avatar, CardActions, CardContent, CardMedia, Link, Typography} from "@material-ui/core";
