@@ -1,19 +1,23 @@
+/* eslint-disable */
 import React from "react";
 // @material-ui/core components
 import { makeStyles } from "@material-ui/core/styles";
-import InputLabel from "@material-ui/core/InputLabel";
 // core components
 import GridItem from "components/Grid/GridItem.js";
 import GridContainer from "components/Grid/GridContainer.js";
-import CustomInput from "components/CustomInput/CustomInput.js";
 import Button from "components/CustomButtons/Button.js";
 import Card from "components/Card/Card.js";
 import CardHeader from "components/Card/CardHeader.js";
-import CardAvatar from "components/Card/CardAvatar.js";
 import CardBody from "components/Card/CardBody.js";
-import CardFooter from "components/Card/CardFooter.js";
+import CardAvatar from "components/Card/CardAvatar.js";
 
 import avatar from "assets/img/faces/marc.jpg";
+import imgContent from "assets/img/sidebar-2.jpg";
+import {Avatar, CardActions, CardContent, CardMedia, Link, Typography} from "@material-ui/core";
+import * as PropTypes from "prop-types";
+import CreateTokenPlugin from "../../components/Plugin/CreateTokenPlugin";
+import CardFooter from "../../components/Card/CardFooter";
+import PluginType from "../../components/Plugin/PluginType";
 
 const styles = {
   cardCategoryWhite: {
@@ -37,117 +41,101 @@ const styles = {
 const useStyles = makeStyles(styles);
 
 export default function UserProfile() {
+  const [fixedClasses, setFixedClasses] = React.useState("dropdown");
+  const [pluginTypeApply, setPluginTypeApply] = React.useState(false);
+  const handleFixedClick = (pluginType) => {
+    setPluginTypeApply(pluginType);
+    if (fixedClasses === "dropdown") {
+      setFixedClasses("dropdown show");
+    } else {
+      setFixedClasses("dropdown");
+    }
+  };
   const classes = useStyles();
   return (
     <div>
       <GridContainer>
         <GridItem xs={12} sm={12} md={8}>
           <Card>
-            <CardHeader color="primary">
-              <h4 className={classes.cardTitleWhite}>Edit Profile</h4>
-              <p className={classes.cardCategoryWhite}>Complete your profile</p>
+            <CardHeader>
+              <GridContainer>
+                <GridItem md={1}>
+                  <CardAvatar plain>
+                    <a href="#pablo" onClick={(e) => e.preventDefault()}>
+                      <img src={avatar} alt="..."  height="50" width="50"/>
+                    </a>
+                  </CardAvatar>
+                </GridItem>
+                <GridItem md={10}>
+                  <Typography variant="body1">
+                    Alec Thompson
+                  </Typography>
+                  <Typography variant="subtitle1">
+                    September 14, 2016
+                  </Typography>
+                </GridItem>
+                <GridItem md={1}>
+                  <Button  onClick={() => handleFixedClick(PluginType.Tip)}>Tip</Button>
+                </GridItem>
+              </GridContainer>
             </CardHeader>
             <CardBody>
-              <GridContainer>
-                <GridItem xs={12} sm={12} md={5}>
-                  <CustomInput
-                    labelText="Company (disabled)"
-                    id="company-disabled"
-                    formControlProps={{
-                      fullWidth: true,
-                    }}
-                    inputProps={{
-                      disabled: true,
-                    }}
-                  />
-                </GridItem>
-                <GridItem xs={12} sm={12} md={3}>
-                  <CustomInput
-                    labelText="Username"
-                    id="username"
-                    formControlProps={{
-                      fullWidth: true,
-                    }}
-                  />
-                </GridItem>
-                <GridItem xs={12} sm={12} md={4}>
-                  <CustomInput
-                    labelText="Email address"
-                    id="email-address"
-                    formControlProps={{
-                      fullWidth: true,
-                    }}
-                  />
-                </GridItem>
-              </GridContainer>
-              <GridContainer>
-                <GridItem xs={12} sm={12} md={6}>
-                  <CustomInput
-                    labelText="First Name"
-                    id="first-name"
-                    formControlProps={{
-                      fullWidth: true,
-                    }}
-                  />
-                </GridItem>
-                <GridItem xs={12} sm={12} md={6}>
-                  <CustomInput
-                    labelText="Last Name"
-                    id="last-name"
-                    formControlProps={{
-                      fullWidth: true,
-                    }}
-                  />
-                </GridItem>
-              </GridContainer>
-              <GridContainer>
-                <GridItem xs={12} sm={12} md={4}>
-                  <CustomInput
-                    labelText="City"
-                    id="city"
-                    formControlProps={{
-                      fullWidth: true,
-                    }}
-                  />
-                </GridItem>
-                <GridItem xs={12} sm={12} md={4}>
-                  <CustomInput
-                    labelText="Country"
-                    id="country"
-                    formControlProps={{
-                      fullWidth: true,
-                    }}
-                  />
-                </GridItem>
-                <GridItem xs={12} sm={12} md={4}>
-                  <CustomInput
-                    labelText="Postal Code"
-                    id="postal-code"
-                    formControlProps={{
-                      fullWidth: true,
-                    }}
-                  />
-                </GridItem>
-              </GridContainer>
-              <GridContainer>
-                <GridItem xs={12} sm={12} md={12}>
-                  <InputLabel style={{ color: "#AAAAAA" }}>About me</InputLabel>
-                  <CustomInput
-                    labelText="Lamborghini Mercy, Your chick she so thirsty, I'm in that two seat Lambo."
-                    id="about-me"
-                    formControlProps={{
-                      fullWidth: true,
-                    }}
-                    inputProps={{
-                      multiline: true,
-                      rows: 5,
-                    }}
-                  />
-                </GridItem>
-              </GridContainer>
+              <img src={imgContent} height="300" width="300"/>
             </CardBody>
-            <CardFooter>
-              <Button color="primary">Update Profile</Button>
+            <CardContent>
+              <Typography variant="body2" color="text.secondary">
+                This impressive paella is a perfect party dish and a fun meal to cook
+                together with your guests. Add 1 cup of frozen peas along with the mussels,
+                if you like.
+              </Typography>
+            </CardContent>
+            <CardFooter chart>
+                <GridItem md={2}>
+                  <CardAvatar plain>
+                    <a href="#pablo" onClick={(e) => e.preventDefault()}>
+                      <img src={avatar} alt="..."  height="25" width="25"/>
+                    </a>
+                  </CardAvatar>
+                  <Typography variant="body2">
+                    Alec Thompson
+                  </Typography>
+
+                </GridItem>
+                <GridItem md={9}>
+                  <Typography variant="subtitle2">
+                    Sep 14, 2016
+                  </Typography>
+                  <Typography variant="body2">
+                    hahaha
+                  </Typography>
+                </GridItem>
+                <GridItem md={1}>
+                  <Button  onClick={() => handleFixedClick(PluginType.Tip)}>Tip</Button>
+                </GridItem>
+            </CardFooter>
+            <CardFooter chart>
+                <GridItem md={2}>
+                  <CardAvatar plain>
+                    <a href="#pablo" onClick={(e) => e.preventDefault()}>
+                      <img src={avatar} alt="..."  height="25" width="25"/>
+                    </a>
+                  </CardAvatar>
+                  <Typography variant="body2">
+                    Alec Thompson
+                  </Typography>
+
+                </GridItem>
+                <GridItem md={9}>
+                  <Typography variant="subtitle2">
+                    Sep 14, 2016
+                  </Typography>
+                  <Typography variant="body2">
+                    hahaha
+                  </Typography>
+                </GridItem>
+                <GridItem md={1}>
+                  <Button  onClick={() => handleFixedClick(PluginType.Tip)}>Tip</Button>
+                </GridItem>
             </CardFooter>
           </Card>
         </GridItem>
@@ -171,6 +159,22 @@ export default function UserProfile() {
               </Button>
             </CardBody>
           </Card>
+          <Card profile>
+            <CardBody>
+              <h2>Your wallet</h2>
+              <h4>1,000,000 BIC</h4>
+              <Link onClick={() => handleFixedClick(PluginType.CreateToken)}><h4>+ Create your own token</h4></Link>
+              <CreateTokenPlugin
+                  handleClick={handleFixedClick}
+                  fixedClasses={fixedClasses}
+                  pluginTitle="Create Bein's Erc20 Token"
+                  pluginType={pluginTypeApply}
+              />
+              <h3>Your bandwidth</h3>
+              <h4>1,000/1,000 BIC</h4>
+            </CardBody>
+          </Card>
+
         </GridItem>
       </GridContainer>
     </div>

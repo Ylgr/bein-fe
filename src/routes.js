@@ -54,6 +54,14 @@ const dashboardRoutes = [
     layout: "/admin",
   },
   {
+    path: "/bein",
+    name: "Bein",
+    rtlName: "ملف تعريفي للمستخدم",
+    icon: Person,
+    component: UserProfile,
+    layout: "/admin",
+  },
+  {
     path: "/table",
     name: "Table List",
     rtlName: "قائمة الجدول",
