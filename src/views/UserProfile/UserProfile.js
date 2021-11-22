@@ -14,9 +14,9 @@ import avatar from "assets/img/faces/marc.jpg";
 import imgContent from "assets/img/sidebar-2.jpg";
 import {Avatar, CardActions, CardContent, CardMedia, Link, Typography} from "@material-ui/core";
 import * as PropTypes from "prop-types";
-import CreateTokenPlugin from "../../components/Plugin/CreateTokenPlugin";
 import CardFooter from "../../components/Card/CardFooter";
 import PluginType from "../../components/Plugin/PluginType";
+import Wallet from "components/Wallet/Wallet";
 
 const styles = {
   cardCategoryWhite: {
@@ -158,22 +158,7 @@ export default function UserProfile() {
               </Button>
             </CardBody>
           </Card>
-          <Card profile>
-            <CardBody>
-              <h2>Your wallet</h2>
-              <h4>1,000,000 BIC</h4>
-              <Link onClick={() => handleFixedClick(PluginType.CreateToken)}><h4>+ Create your own token</h4></Link>
-              <CreateTokenPlugin
-                  handleClick={handleFixedClick}
-                  fixedClasses={fixedClasses}
-                  pluginTitle="Create Bein's Erc20 Token"
-                  pluginType={pluginTypeApply}
-              />
-              <h3>Your bandwidth</h3>
-              <h4>1,000/1,000 BIC</h4>
-            </CardBody>
-          </Card>
-
+          <Wallet handleClick={handleFixedClick} fixedClasses={fixedClasses} pluginTypeApply={pluginTypeApply}/>
         </GridItem>
       </GridContainer>
     </div>

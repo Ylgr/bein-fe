@@ -35,7 +35,7 @@ export default function CreateTokenPlugin(props) {
               <TextField label="Name" color="secondary" focused />
               <TextField label="Symbol" color="secondary" focused />
               <TextField label="Supply" color="secondary" focused />
-              <Button color="primary">Create</Button>
+              <div><Button color="primary">Create</Button></div>
             </ul>
             : props.pluginType === PluginType.Tip ?
                 <ul className="dropdown-menu">
