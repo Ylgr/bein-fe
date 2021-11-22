@@ -13,11 +13,15 @@ import CardAvatar from "components/Card/CardAvatar.js";
 import avatar from "assets/img/faces/marc.jpg";
 import imgContent from "assets/img/sidebar-2.jpg";
 import {Avatar, CardActions, CardContent, CardMedia, Link, Typography} from "@material-ui/core";
-import * as PropTypes from "prop-types";
-import CreateTokenPlugin from "../../components/Plugin/CreateTokenPlugin";
 import CardFooter from "../../components/Card/CardFooter";
 import PluginType from "../../components/Plugin/PluginType";
-
+import Wallet from "../../components/Wallet/Wallet";
+import WalletPlugin from "../../components/Plugin/WalletPlugin";
+import classnames from "classnames";
+import { Keyring } from '@polkadot/keyring';
+import {cryptoWaitReady, mnemonicGenerate, mnemonicToMiniSecret} from '@polkadot/util-crypto';
+import { ApiPromise, WsProvider } from "@polkadot/api"
+import Web3 from 'web3';
 const styles = {
   cardCategoryWhite: {
     color: "rgba(255,255,255,.62)",
@@ -42,6 +46,57 @@ const useStyles = makeStyles(styles);
 export default function UserProfile() {
   const [fixedClasses, setFixedClasses] = React.useState("dropdown");
   const [pluginTypeApply, setPluginTypeApply] = React.useState(false);
+  const [additionInfo, setAdditionInfo] = React.useState({})
+  const [walletInfo, setWalletInfo] = React.useState(null)
+  const [substrateApi, setSubstrateApi] = React.useState(null)
+
+  // const [walletInfo, setWalletInfo] = React.useState(() => {
+  //   const mnemonic = localStorage.getItem("bein_mnemonic")
+  //   if(mnemonic) {
+  //     cryptoWaitReady().then(() => {
+  //       const pair = keyring.addFromUri(mnemonic, null)
+  //       return {
+  //         mnemonic: mnemonic,
+  //         address: pair.address
+  //       }
+  //     })
+  //   } else return {}
+  // })
+  const keyring = new Keyring({ type: 'sr25519'});
+  const web3 = new Web3("http://192.53.173.173:9933");
+
+  React.useEffect(() => {
+    const mnemonic = localStorage.getItem("bein_mnemonic")
+    cryptoWaitReady().then(() => {
+      if(mnemonic) {
+        const pair = keyring.addFromUri(mnemonic, null)
+        setWalletInfo({
+          mnemonic: mnemonic,
+          address: pair.address
+        })
+        // getDetailWalletInfo()
+      }
+    })
+  }, [walletInfo])
+
+  const getDetailWalletInfo = async () => {
+    let api = substrateApi;
+    if(!api) {
+      // const wsProvider = new WsProvider('wss://192.53.173.173:443')
+      api = await ApiPromise.create({ provider: wsProvider })
+      setSubstrateApi(api)
+    }
+
+    const { nonce, data: balance } = await api.query.system.account(walletInfo.address)
+    console.log('balance: ', balance)
+    let updateInfo = walletInfo
+    updateInfo['nonce'] = nonce;
+    updateInfo['balance'] = balance.free;
+    setWalletInfo(updateInfo)
+  }
+
+
+
   const handleFixedClick = (pluginType) => {
     setPluginTypeApply(pluginType);
     if (fixedClasses === "dropdown") {
@@ -50,6 +105,27 @@ export default function UserProfile() {
       setFixedClasses("dropdown");
     }
   };
+
+  const createAnOnlineWallet = async () => {
+    const mnemonic = mnemonicGenerate()
+    localStorage.setItem("bein_mnemonic", mnemonic)
+    console.log('mnemonic: ', mnemonic)
+    const pair = keyring.addFromUri(mnemonic, null)
+    setWalletInfo({
+      mnemonic: mnemonic,
+      address: pair.address
+    })
+    // getDetailWalletInfo()
+    setAdditionInfo({
+      mnemonic: mnemonic,
+    })
+    handleFixedClick(PluginType.CreateOnlineWallet)
+    // const secret = Buffer.from(mnemonicToMiniSecret(mnemonic)).toString('hex')
+    // console.log('mnemonicToMiniSecret: ', secret)
+    // const evmAccount = web3.eth.accounts.privateKeyToAccount('0x'+ secret)
+    // console.log('evmAccount: ', evmAccount)
+  }
+
   const classes = useStyles();
   return (
     <div>
@@ -160,17 +236,23 @@ export default function UserProfile() {
           </Card>
           <Card profile>
             <CardBody>
-              <h2>Your wallet</h2>
-              <h4>1,000,000 BIC</h4>
-              <Link onClick={() => handleFixedClick(PluginType.CreateToken)}><h4>+ Create your own token</h4></Link>
-              <CreateTokenPlugin
-                  handleClick={handleFixedClick}
-                  fixedClasses={fixedClasses}
-                  pluginTitle="Create Bein's Erc20 Token"
-                  pluginType={pluginTypeApply}
-              />
-              <h3>Your bandwidth</h3>
-              <h4>1,000/1,000 BIC</h4>
+              <Wallet handleFixedClick={handleFixedClick} createAnOnlineWallet={createAnOnlineWallet} walletInfo={walletInfo}/>
+              <div
+                  className={classnames("fixed-plugin")}
+              >
+                <div id="fixedPluginClasses" className={fixedClasses}>
+                  <div onClick={handleFixedClick}>
+                    <i className="fa fa-exchange fa-2x" />
+                    </div>
+                      <WalletPlugin
+                          handleClick={handleFixedClick}
+                          fixedClasses={fixedClasses}
+                          pluginTitle="Create Bein's Erc20 Token"
+                          pluginType={pluginTypeApply}
+                          additionInfo={additionInfo}
+                      />
+                </div>
+              </div>
             </CardBody>
           </Card>
 
