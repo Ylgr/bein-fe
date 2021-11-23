@@ -4,13 +4,14 @@ import {Link} from "@material-ui/core";
 import PluginType from "../Plugin/PluginType";
 import React from "react";
 
-export default function Wallet({handleFixedClick, createAnOnlineWallet, walletInfo}) {
-    if (walletInfo) {
+export default function Wallet({handleFixedClick, createAnOnlineWallet, walletDetailInfo}) {
+    console.log('walletDetailInfo: ', walletDetailInfo)
+    if (walletDetailInfo) {
         return (
             <div>
                 <h2>Your wallet</h2>
-                <p>{walletInfo.address}</p>
-                <h4>{walletInfo.balance} BIC</h4>
+                <p>{walletDetailInfo.address}</p>
+                <h4>{walletDetailInfo.balance} BIC</h4>
                 <Link onClick={() => handleFixedClick(PluginType.CreateToken)}><h4>+ Create your own token</h4></Link>
 
                 <h3>Your bandwidth</h3>

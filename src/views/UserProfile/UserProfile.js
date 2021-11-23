@@ -48,54 +48,56 @@ export default function UserProfile() {
   const [pluginTypeApply, setPluginTypeApply] = React.useState(false);
   const [additionInfo, setAdditionInfo] = React.useState({})
   const [walletInfo, setWalletInfo] = React.useState(null)
+  const [walletDetailInfo, setWalletDetailInfo] = React.useState(null)
   const [substrateApi, setSubstrateApi] = React.useState(null)
-
-  // const [walletInfo, setWalletInfo] = React.useState(() => {
-  //   const mnemonic = localStorage.getItem("bein_mnemonic")
-  //   if(mnemonic) {
-  //     cryptoWaitReady().then(() => {
-  //       const pair = keyring.addFromUri(mnemonic, null)
-  //       return {
-  //         mnemonic: mnemonic,
-  //         address: pair.address
-  //       }
-  //     })
-  //   } else return {}
-  // })
   const keyring = new Keyring({ type: 'sr25519'});
-  const web3 = new Web3("http://192.53.173.173:9933");
+  const web3 = new Web3("http://127.0.0.1:9933");
 
   React.useEffect(() => {
     const mnemonic = localStorage.getItem("bein_mnemonic")
-    cryptoWaitReady().then(() => {
-      if(mnemonic) {
+    if(mnemonic && (!walletInfo || walletInfo.mnemonic !== mnemonic)) {
+      cryptoWaitReady().then(() => {
+        console.log('Olala')
         const pair = keyring.addFromUri(mnemonic, null)
         setWalletInfo({
           mnemonic: mnemonic,
           address: pair.address
         })
-        // getDetailWalletInfo()
-      }
-    })
+        getDetailWalletInfo(pair.address)
+      })
+    }
   }, [walletInfo])
 
-  const getDetailWalletInfo = async () => {
+  const getDetailWalletInfo = async (address) => {
     let api = substrateApi;
     if(!api) {
-      // const wsProvider = new WsProvider('wss://192.53.173.173:443')
+      const wsProvider = new WsProvider('ws://192.53.173.173:9944')
       api = await ApiPromise.create({ provider: wsProvider })
       setSubstrateApi(api)
     }
+    console.log('address: ', address)
 
-    const { nonce, data: balance } = await api.query.system.account(walletInfo.address)
-    console.log('balance: ', balance)
-    let updateInfo = walletInfo
-    updateInfo['nonce'] = nonce;
-    updateInfo['balance'] = balance.free;
-    setWalletInfo(updateInfo)
+    if(address) {
+      const { nonce, data: balance } = await api.query.system.account(address)
+      setWalletDetailInfo({
+        address: address,
+        nonce: nonce.toNumber(),
+        balance: balance.free.toString(),
+        reserved: balance.reserved.toString()
+      })
+      console.log('walletDetailInfo: ', walletDetailInfo)
+    }
   }
 
+  const tipUser = async (address, amount) => {
+    await substrateApi.tx.balances.transfer(address, amount).signAndSend(walletInfo.address)
+    await getDetailWalletInfo(walletInfo.address)
+  }
 
+  const stakeForBanwidth = async (amount) => {
+    await substrateApi.tx.feeless.stakeBic(amount)
+    await getDetailWalletInfo(walletInfo.address)
+  }
 
   const handleFixedClick = (pluginType) => {
     setPluginTypeApply(pluginType);
@@ -115,7 +117,7 @@ export default function UserProfile() {
       mnemonic: mnemonic,
       address: pair.address
     })
-    // getDetailWalletInfo()
+    await getDetailWalletInfo(pair.address)
     setAdditionInfo({
       mnemonic: mnemonic,
     })
@@ -236,7 +238,7 @@ export default function UserProfile() {
           </Card>
           <Card profile>
             <CardBody>
-              <Wallet handleFixedClick={handleFixedClick} createAnOnlineWallet={createAnOnlineWallet} walletInfo={walletInfo}/>
+              <Wallet handleFixedClick={handleFixedClick} createAnOnlineWallet={createAnOnlineWallet} walletDetailInfo={walletDetailInfo}/>
               <div
                   className={classnames("fixed-plugin")}
               >
