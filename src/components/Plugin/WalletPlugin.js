@@ -11,6 +11,7 @@ import PluginType from "./PluginType";
 
 export default function WalletPlugin(props) {
     const [stakeAmount, setStakeAmount] = React.useState(0)
+    const [tipAmount, setTipAmount] = React.useState(0)
 
     const handleClick = () => {
         props.handleClick();
@@ -29,15 +30,14 @@ export default function WalletPlugin(props) {
         return (
             <ul className="dropdown-menu">
                 <li className="header-title">Tip for Alec Thompson</li>
-                <Input label="Amount" color="secondary" focused/>
+                <Input label="Amount" color="secondary" focused type="number" value={tipAmount} onChange={(event) => setTipAmount(event.target.value)} />
                 <Select
                     label="In"
                     value="BIC"
                 >
                     <MenuItem value="BIC">BIC</MenuItem>
-                    <MenuItem value="BEIN">BEIN</MenuItem>
                 </Select>
-                <Button color="primary">Tip</Button>
+                <Button color="primary" onClick={() => props.tipUser("5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty", tipAmount)}>Tip</Button>
             </ul>
         )
     } else if (props.pluginType === PluginType.CreateOnlineWallet) {

@@ -5,5 +5,6 @@ const PluginType = {
   Stake: "Stake",
   UnStake: "UnStake",
   Refresh: null,
+  DoNothing: "DoNothing",
 };
 export default PluginType;

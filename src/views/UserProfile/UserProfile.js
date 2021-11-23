@@ -98,8 +98,13 @@ export default function UserProfile() {
   }
 
   const tipUser = async (address, amount) => {
-    await substrateApi.tx.balances.transfer(address, amount).signAndSend(walletInfo.pair)
-    await getDetailWalletInfo(walletDetailInfo.address)
+    const detailAmount = new BN(amount).mul(oneUnit)
+    await substrateApi.tx.balances.transfer(address, detailAmount).signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
+      if (status.isFinalized) {
+        getDetailWalletInfo(walletDetailInfo.address)
+      }
+    })
+    handleFixedClick(PluginType.DoNothing)
   }
 
   const stakeForBandwidth = async (amount) => {
@@ -370,6 +375,7 @@ export default function UserProfile() {
                           pluginType={pluginTypeApply}
                           additionInfo={additionInfo}
                           stakeForBandwidth={stakeForBandwidth}
+                          tipUser={tipUser}
                       />
                 </div>
               </div>
