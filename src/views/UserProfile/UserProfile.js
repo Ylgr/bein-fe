@@ -52,7 +52,7 @@ export default function UserProfile() {
   const [walletDetailInfo, setWalletDetailInfo] = React.useState(null)
   const [substrateApi, setSubstrateApi] = React.useState(null)
   const keyring = new Keyring({ type: 'sr25519'});
-  const web3 = new Web3("http://127.0.0.1:9933");
+  const web3 = new Web3("http://192.53.173.173:9933");
   const oneUnit = new BN("1000000000000000000")
 
   React.useEffect(() => {
