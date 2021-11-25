@@ -92,13 +92,12 @@ export default function UserProfile() {
       let tokenAddresses = localStorage.getItem('tokenList')
       if(evmAddress && tokenAddresses) {
         for (const address of tokenAddresses.split(' ')) {
-          console.log('address: ', address)
           const tokenContract = new web3.eth.Contract(TokenAbi, address);
 
           const name = await tokenContract.methods.name().call()
           const symbol = await tokenContract.methods.symbol().call()
           const balance = new BN(await tokenContract.methods.balanceOf(evmAddress).call()).div(oneUnit).toString()
-          tokenInfo.push({name, symbol, balance})
+          tokenInfo.push({name, symbol, balance, address})
         }
       }
 
@@ -121,6 +120,39 @@ export default function UserProfile() {
         getDetailWalletInfo(walletDetailInfo.address)
       }
     })
+    handleFixedClick(PluginType.DoNothing)
+  }
+
+  const tipUserByToken = async (address, amount, tokenAddress) => {
+    const detailAmount = new BN(amount).mul(oneUnit)
+    const tokenContract = new web3.eth.Contract(TokenAbi, tokenAddress);
+    const transEncodeAbi = tokenContract.methods.transfer(tokenAddress, detailAmount).encodeABI()
+    const gasLimit = await web3.eth.estimateGas({
+      from: walletDetailInfo.evmAddress,
+      to: tokenAddress,
+      value: '0',
+      data: transEncodeAbi
+    })
+
+    const gasPrice = await web3.eth.getGasPrice()
+
+    const currentNonce = await web3.eth.getTransactionCount(walletDetailInfo.evmAddress)
+    const tx = {
+      from: walletDetailInfo.evmAddress,
+      to: tokenAddress,
+      value: 0,
+      gasPrice: gasPrice,
+      gas: gasLimit,
+      data: transEncodeAbi,
+      nonce: currentNonce
+    }
+    console.log('tx: ', tx)
+    const signed = await web3.eth.accounts.signTransaction(tx, Buffer.from(mnemonicToMiniSecret(localStorage.getItem('bein_mnemonic'))).toString('hex'))
+    console.log('signed: ', signed)
+    const receipt = await web3.eth.sendSignedTransaction(signed.rawTransaction)
+    console.log('receipt: ', receipt)
+
+
     handleFixedClick(PluginType.DoNothing)
   }
 
@@ -439,6 +471,8 @@ export default function UserProfile() {
                           stakeForBandwidth={stakeForBandwidth}
                           tipUser={tipUser}
                           createToken={createToken}
+                          tipUserByToken={tipUserByToken}
+                          tokenInfo={walletDetailInfo ?  walletDetailInfo.tokenInfo : []}
                       />
                 </div>
               </div>

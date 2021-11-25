@@ -15,6 +15,7 @@ export default function WalletPlugin(props) {
     const [newTokenName, setNewTokenName] = React.useState('')
     const [newTokenSymbol, setNewTokenSymbol] = React.useState('')
     const [newTokenSupply, setNewTokenSupply] = React.useState('')
+    const [tipToken, setTipToken] = React.useState('BIC')
     const handleClick = () => {
         props.handleClick();
     };
@@ -35,11 +36,16 @@ export default function WalletPlugin(props) {
                 <Input label="Amount" color="secondary" focused type="number" value={tipAmount} onChange={(event) => setTipAmount(event.target.value)} />
                 <Select
                     label="In"
-                    value="BIC"
+                    value={tipToken}
+                    onChange={(event) => setTipToken(event.target.value)}
                 >
                     <MenuItem value="BIC">BIC</MenuItem>
+                    {props.tokenInfo.map(tokenInfo => <MenuItem value={tokenInfo.address}>{tokenInfo.symbol}</MenuItem>)}
                 </Select>
-                <Button color="primary" onClick={() => props.tipUser("5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty", tipAmount)}>Tip</Button>
+                <Button color="primary" onClick={() => {
+                    if(tipToken === "BIC") return props.tipUser("5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty", tipAmount)
+                    else return props.tipUserByToken("5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty", tipAmount, tipToken)
+                }}>Tip</Button>
             </ul>
         )
     } else if (props.pluginType === PluginType.CreateOnlineWallet) {
