@@ -12,7 +12,9 @@ import PluginType from "./PluginType";
 export default function WalletPlugin(props) {
     const [stakeAmount, setStakeAmount] = React.useState(0)
     const [tipAmount, setTipAmount] = React.useState(0)
-
+    const [newTokenName, setNewTokenName] = React.useState('')
+    const [newTokenSymbol, setNewTokenSymbol] = React.useState('')
+    const [newTokenSupply, setNewTokenSupply] = React.useState('')
     const handleClick = () => {
         props.handleClick();
     };
@@ -20,10 +22,10 @@ export default function WalletPlugin(props) {
         return (
             <ul className="dropdown-menu">
                 <li className="header-title">Create new a Bein's Erc20 token</li>
-                <Input label="Name" color="secondary" focused/>
-                <Input label="Symbol" color="secondary" focused/>
-                <Input label="Supply" color="secondary" focused/>
-                <Button color="primary">Create</Button>
+                <Input label="Name" color="secondary" focused value={newTokenName} onChange={(event) => setNewTokenName(event.target.value)}/>
+                <Input label="Symbol" color="secondary" focused value={newTokenSymbol} onChange={(event) => setNewTokenSymbol(event.target.value)}/>
+                <Input label="Supply" type="number" color="secondary" focused value={newTokenSupply} onChange={(event) => setNewTokenSupply(event.target.value)}/>
+                <Button color="primary" onClick={() => props.createToken(newTokenName, newTokenSymbol, newTokenSupply)}>Create</Button>
             </ul>
         )
     } else if (props.pluginType === PluginType.Tip) {

@@ -19,7 +19,9 @@ export default function Wallet({handleFixedClick, createAnOnlineWallet, walletDe
                         <h4>Token wallet address: </h4>
                         <h6>{walletDetailInfo.evmAddress}</h6>
                         <h5>Your token:</h5>
-                        <p>You still don't have any token</p>
+                        {walletDetailInfo.tokenInfo ? <ul>
+                            {walletDetailInfo.tokenInfo.map(tokenInfo => (<li>{tokenInfo.name}({tokenInfo.symbol}) ... {tokenInfo.balance}</li>))}
+                        </ul>: <p>You still don't have any token</p>}
                         <Link onClick={() => handleFixedClick(PluginType.CreateToken)}><h4>+ Create your own token!</h4></Link>
                     </div>
                 }

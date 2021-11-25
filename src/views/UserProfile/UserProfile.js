@@ -23,6 +23,9 @@ import {cryptoWaitReady, mnemonicGenerate, mnemonicToMiniSecret} from '@polkadot
 import { ApiPromise, WsProvider } from "@polkadot/api"
 import Web3 from 'web3';
 import BN from 'bn.js';
+import FactoryAbi from "../../abi/Factory.json"
+import TokenAbi from "../../abi/Token.json"
+
 const styles = {
   cardCategoryWhite: {
     color: "rgba(255,255,255,.62)",
@@ -54,6 +57,7 @@ export default function UserProfile() {
   const keyring = new Keyring({ type: 'sr25519'});
   const web3 = new Web3("http://192.53.173.173:9933");
   const oneUnit = new BN("1000000000000000000")
+  const factoryAddress = "0x1214AeF6eCB2b3eAbd0987E42Ea4B9E279689527"
 
   React.useEffect(() => {
     const mnemonic = localStorage.getItem("bein_mnemonic")
@@ -84,7 +88,20 @@ export default function UserProfile() {
       const totalBandwidth = await api.query.feeless.stakingMap(address)
       const currentBandwidth = await api.query.feeless.bandwidthMap(address)
       const evmAddress = (await api.query.evmAccounts.evmAddresses(address)).toString()
-      console.log('evmAddress: ', evmAddress)
+      let tokenInfo = []
+      let tokenAddresses = localStorage.getItem('tokenList')
+      if(evmAddress && tokenAddresses) {
+        for (const address of tokenAddresses.split(' ')) {
+          console.log('address: ', address)
+          const tokenContract = new web3.eth.Contract(TokenAbi, address);
+
+          const name = await tokenContract.methods.name().call()
+          const symbol = await tokenContract.methods.symbol().call()
+          const balance = new BN(await tokenContract.methods.balanceOf(evmAddress).call()).div(oneUnit).toString()
+          tokenInfo.push({name, symbol, balance})
+        }
+      }
+
       setWalletDetailInfo({
         address: address,
         nonce: nonce.toNumber(),
@@ -92,7 +109,7 @@ export default function UserProfile() {
         reserved: balance.reserved.div(oneUnit).toString(),
         totalBandwidth: totalBandwidth.toString(),
         currentBandwidth: currentBandwidth.toString(),
-        evmAddress
+        evmAddress,tokenInfo
       })
     }
   }
@@ -131,6 +148,51 @@ export default function UserProfile() {
             getDetailWalletInfo(walletDetailInfo.address)
           }
         }).catch(console.log)
+  }
+
+  const createToken = async (name, symbol, totalSupply) => {
+    console.log('name: ', name)
+    console.log('symbol: ', symbol)
+    console.log('totalSupply: ', totalSupply)
+    const factoryContract = new web3.eth.Contract(FactoryAbi, factoryAddress);
+    const newTokenAbi = factoryContract.methods.createNewToken(name, symbol, totalSupply).encodeABI()
+    const gasPrice = await web3.eth.getGasPrice()
+    console.log('gasPrice: ', gasPrice)
+    const gasLimit = await web3.eth.estimateGas({
+      from: walletDetailInfo.evmAddress,
+      to: factoryAddress,
+      value: '0',
+      data: newTokenAbi
+    })
+
+    const nonce = await web3.eth.getTransactionCount(walletDetailInfo.evmAddress)
+    const tx = {
+      from: walletDetailInfo.evmAddress,
+      to: factoryAddress,
+      value: 0,
+      gasPrice: gasPrice,
+      gas: gasLimit,
+      data: newTokenAbi,
+      nonce: nonce
+    }
+    console.log('tx: ', tx)
+    const signed = await web3.eth.accounts.signTransaction(tx, Buffer.from(mnemonicToMiniSecret(localStorage.getItem('bein_mnemonic'))).toString('hex'))
+    console.log('signed: ', signed)
+
+    const receipt = await web3.eth.sendSignedTransaction(signed.rawTransaction)
+    console.log('receipt: ', receipt)
+
+    const lastEvent = await factoryContract.getPastEvents("TokenCreated", {fromBlock:receipt.blockNumber, toBlock: receipt.blockNumber})
+    console.log('lastEvent: ', lastEvent)
+    const tokenAddress = lastEvent[0].returnValues.tokenAddress
+    console.log('tokenAddress: ', tokenAddress)
+    let tokenList = localStorage.getItem('tokenList')
+    if(tokenList) {
+      tokenList = tokenList + ' ' + tokenAddress
+      localStorage.setItem('tokenList', tokenList)
+    } else {
+      localStorage.setItem('tokenList', tokenAddress)
+    }
   }
 
   const connectMetamask = async () => {
@@ -376,6 +438,7 @@ export default function UserProfile() {
                           additionInfo={additionInfo}
                           stakeForBandwidth={stakeForBandwidth}
                           tipUser={tipUser}
+                          createToken={createToken}
                       />
                 </div>
               </div>
