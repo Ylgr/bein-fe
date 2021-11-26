@@ -6,5 +6,8 @@ const PluginType = {
   UnStake: "UnStake",
   Refresh: null,
   DoNothing: "DoNothing",
+  ChooseWallet: "ChooseWallet",
+  BrowserWallet: "BrowserWallet",
+  ExtensionWallet: "ExtensionWallet",
 };
 export default PluginType;

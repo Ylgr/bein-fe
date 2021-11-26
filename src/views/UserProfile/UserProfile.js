@@ -21,16 +21,19 @@ import Wallet from "../../components/Wallet/Wallet";
 import WalletPlugin from "../../components/Plugin/WalletPlugin";
 import classnames from "classnames";
 import { Keyring } from '@polkadot/keyring';
-import {cryptoWaitReady, mnemonicGenerate, mnemonicToMiniSecret} from '@polkadot/util-crypto';
-import { ApiPromise, WsProvider } from "@polkadot/api"
+import { cryptoWaitReady, mnemonicGenerate, mnemonicToMiniSecret, decodeAddress } from '@polkadot/util-crypto';
+import { ApiPromise, WsProvider } from "@polkadot/api";
+import FactoryAbi from "../../abi/FactoryAbi.json";
+import TokenAbi from "../../abi/TokenAbi.json";
+import { web3Accounts, web3Enable, web3FromAddress } from '@polkadot/extension-dapp';
+
 import Web3 from 'web3';
 import BN from 'bn.js';
-import FactoryAbi from "../../abi/Factory.json"
-import TokenAbi from "../../abi/Token.json"
 import HourglassFull from "@material-ui/icons/HourglassFull";
 import Done from "@material-ui/icons/Done";
 import Snackbar from "components/Snackbar/Snackbar.js";
 
+import { symbolName } from "typescript";
 const styles = {
   cardCategoryWhite: {
     color: "rgba(255,255,255,.62)",
@@ -55,292 +58,329 @@ const useStyles = makeStyles(styles);
 export default function UserProfile() {
   const [fixedClasses, setFixedClasses] = React.useState("dropdown");
   const [pluginTypeApply, setPluginTypeApply] = React.useState(false);
-  const [additionInfo, setAdditionInfo] = React.useState({})
-  const [walletInfo, setWalletInfo] = React.useState(null)
-  const [walletDetailInfo, setWalletDetailInfo] = React.useState(null)
-  const [substrateApi, setSubstrateApi] = React.useState(null)
-  const [isNotification, setIsNotification] = React.useState(false)
-  const [notificationInfo, setNotificationInfo] = React.useState({})
-  const keyring = new Keyring({ type: 'sr25519'});
-  const web3 = new Web3("http://192.53.173.173:9933");
-  const oneUnit = new BN("1000000000000000000")
-  const factoryAddress = "0x1214AeF6eCB2b3eAbd0987E42Ea4B9E279689527"
+
+  const [substrateApi, setSubstrateApi] = React.useState(null);
+  const [web3, setWeb3] = React.useState(null);
+  const [mode, setMode] = React.useState(PluginType.ChooseWallet);
+
+  const [balance, setBalance] = React.useState("0");
+  const [remainBandwidth, setRemainBandwidth] = React.useState("0");
+  const [bindedEvmAddr, setBindedEvmAddr] = React.useState(null);
+  const [connectedEvmAddr, setConnectEvmAddr] = React.useState(null);
+  const [ss58Addr, setSS58Addr] = React.useState(null);
+  const [tokenInfo, setTokenInfo] = React.useState([]);
+
+  // browser wallet
+  const [mnemonic, setMnemonic] = React.useState(null);
+  const [walletInfo, setWalletInfo] = React.useState(null);
+
+  // CONST
+  const nodeurl = '127.0.0.1:9944';
+  const nodeweb3 = '127.0.0.1:9933'
+  const keyring = new Keyring({ type: 'sr25519' });
+  const oneUnit = new BN("1000000000000000000");
+  const factoryAddress = '0x587cF36c2a144Ff60625CB0c4CA9213A2DED4f5d';
+
+  // React.useEffect(() => {
+  //   const mnemonic = localStorage.getItem("bein_mnemonic")
+  //   if(mnemonic && (!walletInfo || walletInfo.mnemonic !== mnemonic)) {
+  //     cryptoWaitReady().then(() => {
+  //       console.log('Olala')
+  //       const pair = keyring.addFromUri(mnemonic, null)
+  //       setWalletInfo({
+  //         mnemonic: mnemonic,
+  //         pair: pair
+  //       })
+  //       browserWallet.getDetailWalletInfo(pair.address)
+  //     })
+  //   }
+  // }, [walletInfo])
 
   React.useEffect(() => {
-    const mnemonic = localStorage.getItem("bein_mnemonic")
-    if(mnemonic && (!walletInfo || walletInfo.mnemonic !== mnemonic)) {
-      cryptoWaitReady().then(() => {
-        const pair = keyring.addFromUri(mnemonic, null)
-        setWalletInfo({
-          mnemonic: mnemonic,
-          pair: pair
-        })
-        getDetailWalletInfo(pair.address)
-      })
+
+    return SubWalletInfo.unsubAll();
+  });
+
+
+  const initTx = async (from, to, value, data) => {
+    const gasPrice = await web3.eth.getGasPrice();
+    console.log("gasPrice", gasPrice);
+    const txConfig = {
+      from,
+      to,
+      value,
+      data
     }
-  }, [walletInfo])
-
-  const getDetailWalletInfo = async (address) => {
-    let api = substrateApi;
-    if(!api) {
-      const wsProvider = new WsProvider('ws://192.53.173.173:9944')
-      api = await ApiPromise.create({ provider: wsProvider })
-      setSubstrateApi(api)
-    }
-
-    if(address) {
-      const { nonce, data: balance } = await api.query.system.account(address)
-      const totalBandwidth = await api.query.feeless.stakingMap(address)
-      const currentBandwidth = await api.query.feeless.bandwidthMap(address)
-      const evmAddress = (await api.query.evmAccounts.evmAddresses(address)).toString()
-      let tokenInfo = []
-      let tokenAddresses = localStorage.getItem('tokenList')
-      if(evmAddress && tokenAddresses) {
-        for (const address of tokenAddresses.split(' ')) {
-          const tokenContract = new web3.eth.Contract(TokenAbi, address);
-
-          const name = await tokenContract.methods.name().call()
-          const symbol = await tokenContract.methods.symbol().call()
-          const balance = new BN(await tokenContract.methods.balanceOf(evmAddress).call()).div(oneUnit).toString()
-          tokenInfo.push({name, symbol, balance, address})
-        }
-      }
-
-      setWalletDetailInfo({
-        address: address,
-        nonce: nonce.toNumber(),
-        balance: balance.free.div(oneUnit).toString(),
-        reserved: balance.reserved.div(oneUnit).toString(),
-        totalBandwidth: totalBandwidth.toString(),
-        currentBandwidth: currentBandwidth.toString(),
-        evmAddress,tokenInfo
-      })
-    }
-  }
-
-  const tipUser = async (address, amount) => {
-    const detailAmount = new BN(amount).mul(oneUnit)
-    setNotificationInfo({
-      color: 'info',
-      message: `Tipping ${amount} to ${address}`,
-      icon: HourglassFull
-    })
-    setIsNotification(true)
-    await substrateApi.tx.balances.transfer(address, detailAmount).signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
-      if (status.isFinalized) {
-        getDetailWalletInfo(walletDetailInfo.address)
-        setNotificationInfo({
-          color: 'success',
-          message: `Tipping ${amount} to ${address} success!`,
-          icon: Done
-        })
-      }
-    })
-    handleFixedClick(PluginType.DoNothing)
-  }
-
-  const tipUserByToken = async (address, amount, tokenAddress) => {
-    const detailAmount = new BN(amount).mul(oneUnit)
-    const tokenContract = new web3.eth.Contract(TokenAbi, tokenAddress);
-    const transEncodeAbi = tokenContract.methods.transfer(tokenAddress, detailAmount).encodeABI()
-    const gasLimit = await web3.eth.estimateGas({
-      from: walletDetailInfo.evmAddress,
-      to: tokenAddress,
-      value: '0',
-      data: transEncodeAbi
-    })
-
-    const gasPrice = await web3.eth.getGasPrice()
-
-    const currentNonce = await web3.eth.getTransactionCount(walletDetailInfo.evmAddress)
+    const gasLimit = await web3.eth.estimateGas(txConfig);
+    const nonce = await web3.eth.getTransactionCount(from);
     const tx = {
-      from: walletDetailInfo.evmAddress,
-      to: tokenAddress,
-      value: 0,
-      gasPrice: gasPrice,
-      gas: gasLimit,
-      data: transEncodeAbi,
-      nonce: currentNonce
+      ...txConfig,
+      nonce: nonce.toString(),
+      gasPrice: gasPrice.toString(),
+      gas: gasLimit.toString()
     }
-    setNotificationInfo({
-      color: 'info',
-      message: `Tipping ${amount} of ${tokenAddress} to ${address}`,
-      icon: HourglassFull
-    })
-    setIsNotification(true)
+    console.log(tx);
+    return tx;
+  }
 
-    const signed = await web3.eth.accounts.signTransaction(tx, Buffer.from(mnemonicToMiniSecret(localStorage.getItem('bein_mnemonic'))).toString('hex'))
-    web3.eth.sendSignedTransaction(signed.rawTransaction).on('error', () => {
-      setNotificationInfo({
-        color: 'danger',
-        message: error.message,
-        icon: HourglassFull
-      })
-      setIsNotification(true)
-    }).on('confirmation', (confirmationNumber) => {
-      setNotificationInfo({
-        color: 'success',
-        message: `Tipping ${amount} of ${tokenAddress} to ${address} success!`,
-        icon: Done
-      })
-      setIsNotification(true)
-      handleFixedClick(PluginType.DoNothing)
-
+  const sendTxMetamask = (rawTx) => {
+    const { ethereum } = window
+    return ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [rawTx],
     })
   }
 
-  const stakeForBandwidth = async (amount) => {
-    const detailAmount = new BN(amount).mul(oneUnit)
-    setNotificationInfo({
-      color: 'info',
-      message: `Staking ${amount}`,
-      icon: HourglassFull
-    })
-    setIsNotification(true)
-    await substrateApi.tx.feeless.stakeBic(detailAmount).signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
-      if (status.isFinalized) {
-        setNotificationInfo({
-          color: 'success',
-          message: `Staking ${amount} success!`,
-          icon: Done
-        })
-        getDetailWalletInfo(walletDetailInfo.address)
+  const getTokenInfo = async (evmAddress) => {
+    const web3 = new Web3(`http://${nodeweb3}`);
+    let tokenInfo = [];
+    let tokenAddresses = localStorage.getItem(evmAddress);
+    if(!tokenAddresses) {
+      return;
+    }
+    try {
+      for (const address of tokenAddresses.split(' ')) {
+        if (address === '') {
+          continue;
+        }
+        const tokenContract = new web3.eth.Contract(TokenAbi, address);
+        const name = await tokenContract.methods.name().call();
+        const symbol = await tokenContract.methods.symbol().call();
+        const balance = (new BN(await tokenContract.methods.balanceOf(evmAddress).call())/oneUnit).toString();
+        tokenInfo.push({name, symbol, balance, address});
       }
-    })
+
+    } catch (err) {
+      console.log(err);
+    }
+    console.log(tokenInfo);
+    setTokenInfo(tokenInfo);
+    return;
   }
 
-  const claimEvmAddressLocal = async () => {
-    const secret = mnemonicToMiniSecret(walletInfo.mnemonic)
-    console.log('walletInfo.mnemonic: ', walletInfo.mnemonic)
-    const account = web3.eth.accounts.privateKeyToAccount("0x"+ Buffer.from(secret).toString('hex'))
-    const msgClaim = `bein evm:${Buffer.from(walletInfo.pair.publicKey).toString('hex')}`;
-    console.log('msgClaim: ', msgClaim)
-    const signature = (await account.sign(msgClaim)).signature
-    console.log('signature: ', signature)
-    await substrateApi.tx.evmAccounts
+  // sub to get data
+  const SubWalletInfo = {
+    subBalance: async (address) => {
+      console.log("subBalance");
+      if (!substrateApi) {
+        return false;
+      }
+      const unsub = await substrateApi.query.system.account(address, ({ nonce, data: balance }) => {
+        let free = new BN(`${balance.free}`);
+        free =(free/oneUnit).toString();
+        setBalance(free);
+        console.log(free);
+      });
+      SubWalletInfo.addUnSub(unsub);
+      return true;
+    },
+
+    subBandwidth: async (address) => {
+      if (!substrateApi) {
+        return false;
+      }
+      const unsub = await substrateApi.query.feeless.bandwidthMap(address, (rmbandwidth) => {
+        setRemainBandwidth(rmbandwidth.toString());
+      });
+      SubWalletInfo.addUnSub(unsub);
+      return true;
+    },
+
+    addUnSub: (unsub) => {
+      SubWalletInfo.unsubArray.push(unsub);
+    },
+
+    unsubAll: () => {
+      SubWalletInfo.unsubArray.forEach(unsub => unsub());
+      SubWalletInfo.unsubArray = [];
+    },
+
+    unsubArray: []
+  }
+
+  const BrowserWallet = {
+    init: async () => {
+      setWeb3(new Web3(`http://${nodeweb3}`));
+      const wsProvider = new WsProvider(`ws://${nodeurl}`)
+      const api = await ApiPromise.create({ provider: wsProvider })
+      setSubstrateApi(api)
+      await BrowserWallet.createAnOnlineWallet(api);
+    },
+
+    createAnOnlineWallet: async (api) => {
+      let mnemonic = localStorage.getItem("browser_wallet_mnemonic");
+      if (mnemonic === null) {
+        mnemonic = mnemonicGenerate();
+        localStorage.setItem("browser_wallet_mnemonic", mnemonic);
+      }
+      setMnemonic(mnemonic);
+      console.log('mnemonic: ', mnemonic)
+      const pair = keyring.addFromUri(mnemonic, null)
+      setSS58Addr(pair.address);
+      setWalletInfo({
+        mnemonic: mnemonic,
+        pair: pair
+      });
+      const evmAddr = (await api.query.evmAccounts.evmAddresses(pair.address)).toString();
+      console.log(evmAddr);
+      if (evmAddr !== '') {
+          setBindedEvmAddr(evmAddr);
+          await getTokenInfo(evmAddr);
+      }
+      handleFixedClick(PluginType.CreateOnlineWallet)
+    },
+
+    claimEvmAddressLocal: async () => {
+      const secret = mnemonicToMiniSecret(walletInfo.mnemonic)
+      const account = web3.eth.accounts.privateKeyToAccount("0x" + Buffer.from(secret).toString('hex'));
+      const msgClaim = `bein evm:${Buffer.from(walletInfo.pair.publicKey).toString('hex')}`;
+      const signature = (await account.sign(msgClaim)).signature
+      await substrateApi.tx.evmAccounts
         .claimAccount(account.address, web3.utils.hexToBytes(signature))
         .signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
           if (status.isFinalized) {
-            getDetailWalletInfo(walletDetailInfo.address)
+            setBindedEvmAddr(account.address);
           }
         }).catch(console.log)
-  }
+    },
 
-  const createToken = async (name, symbol, totalSupply) => {
-    console.log('name: ', name)
-    console.log('symbol: ', symbol)
-    console.log('totalSupply: ', totalSupply)
-    const factoryContract = new web3.eth.Contract(FactoryAbi, factoryAddress);
-    const newTokenAbi = factoryContract.methods.createNewToken(name, symbol, totalSupply).encodeABI()
-    const gasPrice = await web3.eth.getGasPrice()
-    console.log('gasPrice: ', gasPrice)
-    const gasLimit = await web3.eth.estimateGas({
-      from: walletDetailInfo.evmAddress,
-      to: factoryAddress,
-      value: '0',
-      data: newTokenAbi
-    })
-
-    const nonce = await web3.eth.getTransactionCount(walletDetailInfo.evmAddress)
-    const tx = {
-      from: walletDetailInfo.evmAddress,
-      to: factoryAddress,
-      value: 0,
-      gasPrice: gasPrice,
-      gas: gasLimit,
-      data: newTokenAbi,
-      nonce: nonce
-    }
-    console.log('tx: ', tx)
-    const signed = await web3.eth.accounts.signTransaction(tx, Buffer.from(mnemonicToMiniSecret(localStorage.getItem('bein_mnemonic'))).toString('hex'))
-    console.log('signed: ', signed)
-
-    const receipt = await web3.eth.sendSignedTransaction(signed.rawTransaction)
-    console.log('receipt: ', receipt)
-
-    const lastEvent = await factoryContract.getPastEvents("TokenCreated", {fromBlock:receipt.blockNumber, toBlock: receipt.blockNumber})
-    console.log('lastEvent: ', lastEvent)
-    const tokenAddress = lastEvent[0].returnValues.tokenAddress
-    console.log('tokenAddress: ', tokenAddress)
-    let tokenList = localStorage.getItem('tokenList')
-    if(tokenList) {
-      tokenList = tokenList + ' ' + tokenAddress
-      localStorage.setItem('tokenList', tokenList)
-    } else {
-      localStorage.setItem('tokenList', tokenAddress)
-    }
-  }
-
-  const connectMetamask = async () => {
-    if (!!window.ethereum) {
-      const web3 = new Web3(window.ethereum);
-      await window.ethereum.request({ method: "eth_requestAccounts" })
-      setWeb3(web3);
-      const addresses = await web3.eth.getAccounts();
-      setConnectEvmAddr(addresses[0]);
-
-      window.ethereum.on('accountsChanged', (addresses) => {
-        setConnectEvmAddr(addresses[0])
-      });
-    } else {
-      alert('Cannot detect metamask wallet');
-    }
-  }
-
-  const connectPolkadotWallet = async () => {
-    const extension = await web3Enable('Polkadot Hackathon');
-    if (extension.length === 0) {
-      alert('Connect detect polkadot wallet');
-      return;
-    }
-    const allAccounts = await web3Accounts();
-    if (allAccounts.length === 0) {
-      alert('Please create an account and try again');
-      return;
-    }
-    setSS58Addr(allAccounts[0].address);
-
-    const wsProvider = new WsProvider(provider);
-    const api = await ApiPromise.create({ provider: wsProvider });
-    setAPI(api);
-    try {
-      const evmAddr = (await api.query.evmAccounts.evmAddresses(ss58Addr)).toString()
-      if (evmAddr !== '') {
-        setBindedEvmAddr(evmAddr)
+    createToken: async (name, symbol, totalSupply) => {
+      console.log(name);
+      console.log(symbol);
+      console.log(totalSupply);
+      try {
+        const factoryContract = new web3.eth.Contract(FactoryAbi, factoryAddress);
+        const data = factoryContract.methods.createNewToken(name, symbol, totalSupply).encodeABI();
+        const tx = await initTx(bindedEvmAddr, factoryAddress, '0', data);
+        const signed = await web3.eth.accounts.signTransaction(tx, Buffer.from(mnemonicToMiniSecret(mnemonic)).toString('hex'));
+        const receipt = await web3.eth.sendSignedTransaction(signed.rawTransaction);
+        const lastEvent = await factoryContract.getPastEvents("TokenCreated", { fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber });
+        const tokenAddress = lastEvent[0].returnValues.tokenAddress;
+        let tokenList = localStorage.getItem(bindedEvmAddr);
+        if (!tokenList) {
+          tokenList = tokenAddress;
+        } else {
+          tokenList = tokenList + ' ' + tokenAddress;
+        }
+        localStorage.setItem(bindedEvmAddr, tokenList);
+        await getTokenInfo(bindedEvmAddr);
+      } catch (err) {
+        console.log(err);
+        alert('create token failed. try again');
       }
-    } catch(err) {
-      console.log(err)
+    },
+
+    tipUserByToken: async (address, amount, tokenAddress) => {
+      const detailAmount = new BN(amount).mul(oneUnit);
+      const tokenContract = new web3.eth.Contract(TokenAbi, tokenAddress);
+      const data = tokenContract.methods.transfer(address, detailAmount).encodeABI();
+      const tx = await initTx(bindedEvmAddr, tokenAddress, '0', data);
+      const signed = await web3.eth.accounts.signTransaction(tx, Buffer.from(mnemonicToMiniSecret(mnemonic)).toString('hex'))
+      const receipt = await web3.eth.sendSignedTransaction(signed.rawTransaction);
+      await getTokenInfo(bindedEvmAddr);
+      handleFixedClick(PluginType.DoNothing)
+    },
+
+    tipUser: async (address, amount) => {
+      const detailAmount = new BN(amount).mul(oneUnit)
+      const subCall = substrateApi.tx.balances.transfer(address, detailAmount);
+      await substrateApi.tx.feeless.feelessCall(subCall).signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
+        if (status.isFinalized) {
+          console.log('tipUser done');
+        }
+      })
+      handleFixedClick(PluginType.DoNothing)
+    },
+
+    stakeForBandwidth: async (amount) => {
+      const detailAmount = new BN(amount).mul(oneUnit)
+      await substrateApi.tx.feeless.stakeBic(detailAmount).signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
+        if (status.isFinalized) {
+          console.log('staked');
+        }
+      });
+    },
+
+    unstakeAll: async() => {
+      await substrateApi.tx.feeless.unstakeBic().signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
+        if (status.isFinalized) {
+          console.log('unstaked');
+        }
+      })
     }
   }
 
-  const bindingEVMAddress = async () => {
-    if (!!bindedEvmAddr) {
-      alert('EVM address already binded');
-      return;
-    }
-    if (!ss58Addr || !connectedEvmAddr) {
-      alert('Need connecting to 2 wallets');
-      return;
-    }
-    if (!api) {
-      alert('wait a few secs to construct api and try again');
-      return;
-    }
+  const ExtensionWallet = {
+    connectMetamask: async () => {
+      if (!!window.ethereum) {
+        const web3 = new Web3(window.ethereum);
+        await window.ethereum.request({ method: "eth_requestAccounts" })
+        setWeb3(web3);
+        const addresses = await web3.eth.getAccounts();
+        setConnectEvmAddr(addresses[0]);
 
-    const msg = `bein evm:${web3.utils.bytesToHex(ss58Addr).slice(2)}`;
-    let ok = true;
-    const signature = await web3.eth.personal.sign(msg, connectedEvmAddr)
+        window.ethereum.on('accountsChanged', (addresses) => {
+          setConnectEvmAddr(addresses[0])
+        });
+      } else {
+        alert('Cannot detect metamask wallet');
+      }
+    },
+
+    connectPolkadotWallet: async () => {
+      const extension = await web3Enable('Polkadot Hackathon');
+      if (extension.length === 0) {
+        alert('Connect detect polkadot wallet');
+        return;
+      }
+      const allAccounts = await web3Accounts();
+      if (allAccounts.length === 0) {
+        alert('Please create an account and try again');
+        return;
+      }
+      setSS58Addr(allAccounts[0].address);
+
+      const wsProvider = new WsProvider(`ws://${nodeurl}`);
+      const api = await ApiPromise.create({ provider: wsProvider });
+      setSubstrateApi(api);
+      try {
+        const evmAddr = (await api.query.evmAccounts.evmAddresses(allAccounts[0].address)).toString();
+        if (evmAddr !== '') {
+          setBindedEvmAddr(evmAddr)
+        }
+      } catch (err) {
+        console.log(err)
+      }
+    },
+
+    bindingEVMAddress: async () => {
+      if (!!bindedEvmAddr) {
+        alert('EVM address already binded');
+        return;
+      }
+      if (!ss58Addr || !connectedEvmAddr) {
+        alert('Need connecting to 2 wallets');
+        return;
+      }
+      if (!substrateApi) {
+        alert('wait a few secs to construct api and try again');
+        return;
+      }
+      const publicKey = decodeAddress(ss58Addr);
+      const msg = `bein evm:${Buffer.from(publicKey).toString('hex')}`
+      let ok = true;
+      const signature = await web3.eth.personal.sign(msg, connectedEvmAddr)
         .catch(err => {
           console.log(err);
           alert('binding failed');
           ok = false;
         });
-    if (!ok) {
-      return;
-    }
+      if (!ok) {
+        return;
+      }
 
-    const injector = await web3FromAddress(ss58Addr);
-    await api.tx.evmAccounts
+      const injector = await web3FromAddress(ss58Addr);
+      await substrateApi.tx.evmAccounts
         .claimAccount(connectedEvmAddr, web3.utils.hexToBytes(signature))
         .signAndSend(ss58Addr, {
           signer: injector.signer
@@ -354,6 +394,108 @@ export default function UserProfile() {
           alert('binding failed');
           console.log(err);
         })
+    },
+
+    createToken: async (name, symbol, totalSupply) => {
+      if (!connectedEvmAddr) {
+        alert('please connect metamask');
+        return;
+      }
+      if (!!bindedEvmAddr && (bindedEvmAddr.toUpperCase() !== connectedEvmAddr.toUpperCase())) {
+        alert('please connect metamask with binded account');
+        return;
+      }
+
+      try {
+        const factoryContract = new web3.eth.Contract(FactoryAbi, factoryAddress);
+        const data = factoryContract.methods.createNewToken(name, symbol, totalSupply).encodeABI();
+        const tx = await initTx(bindedEvmAddr, factoryAddress, '0', data);
+        const txHash = await sendTxMetamask(tx);
+
+        let cntSleep = 0;
+        let receipt;
+        while (cntSleep <= 3000 * 10) {
+          receipt = await web3.eth.getTransactionReceipt(txHash);
+          if (receipt === null) {
+            await sleep(3000);
+            cntSleep += 3000;
+            continue;
+          }
+          break;
+        }
+
+        if (receipt.status === false) {
+          throw new Error("tx failed");
+        }
+
+        console.log('receipt', receipt);
+        const lastEvent = await factoryContract.getPastEvents("TokenCreated", { fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber });
+        const tokenAddress = lastEvent[0].returnValues.tokenAddress;
+        console.log(tokenAddress);
+        let tokenList = localStorage.getItem(bindedEvmAddr);
+        if (!tokenList) {
+          tokenList = tokenAddress;
+        } else {
+          tokenList = tokenList + ' ' + tokenAddress;
+        }
+        localStorage.setItem(bindedEvmAddr, tokenList);
+        await getTokenInfo(bindedEvmAddr);
+      } catch (err) {
+        console.log(err);
+        alert('create token failed. try again');
+      }
+    },
+
+    tipUser: async (address, amount) => {
+      const detailAmount = new BN(amount).mul(oneUnit);
+      const subCall = substrateApi.tx.balances.transfer(address, detailAmount);
+      const injector = await web3FromAddress(ss58Addr);
+      await substrateApi.tx.feeless.feelessCall(subCall).signAndSend(ss58Addr, {
+        signer: injector.signer
+      }, ({ events = [], status, dispatchError }) => {
+        if (status.isFinalized) {
+          console.log('ok tip with extension wallet');
+        }
+      })
+      .catch(err => {
+        alert('binding failed');
+        console.log(err);
+      })
+      handleFixedClick(PluginType.DoNothing)
+    },
+
+    tipUserByToken: async (address, amount, tokenAddress) => {
+      const detailAmount = new BN(amount).mul(oneUnit);
+      const tokenContract = new web3.eth.Contract(TokenAbi, tokenAddress);
+      const data = tokenContract.methods.transfer(address, detailAmount).encodeABI();
+      const tx = await initTx(bindedEvmAddr, tokenAddress, '0', data);
+      await sendTxMetamask(tx);
+      await getTokenInfo(bindedEvmAddr);
+      handleFixedClick(PluginType.DoNothing)
+    },
+
+    stakeForBandwidth: async (amount) => {
+      const detailAmount = new BN(amount).mul(oneUnit);
+      const injector = await web3FromAddress(ss58Addr);
+      await substrateApi.tx.feeless.stakeBic(detailAmount).signAndSend(ss58Addr, {
+        signer: injector.signer
+      }, ({ events = [], status, dispatchError }) => {
+        if (status.isFinalized) {
+          console.log('ok staked with extension wallet');
+        }
+      })
+    },
+
+    unstakeAll: async() => {
+      const injector = await web3FromAddress(ss58Addr);
+      await substrateApi.tx.feeless.unstakeBic().signAndSend(ss58Addr, {
+        signer: injector.signer
+      }, ({ events = [], status, dispatchError }) => {
+        if (status.isFinalized) {
+          console.log('ok staked with extension wallet');
+        }
+      })
+    }
   }
 
   const handleFixedClick = (pluginType) => {
@@ -363,29 +505,15 @@ export default function UserProfile() {
     } else {
       setFixedClasses("dropdown");
     }
-    if(pluginType === PluginType.Refresh && walletInfo) {
-      getDetailWalletInfo(walletInfo.address)
-    }
   };
 
-  const createAnOnlineWallet = async () => {
-    const mnemonic = mnemonicGenerate()
-    localStorage.setItem("bein_mnemonic", mnemonic)
-    console.log('mnemonic: ', mnemonic)
-    const pair = keyring.addFromUri(mnemonic, null)
-    setWalletInfo({
-      mnemonic: mnemonic,
-      pair: pair
-    })
-    await getDetailWalletInfo(pair.address)
-    setAdditionInfo({
-      mnemonic: mnemonic,
-    })
-    handleFixedClick(PluginType.CreateOnlineWallet)
-    // const secret = Buffer.from(mnemonicToMiniSecret(mnemonic)).toString('hex')
-    // console.log('mnemonicToMiniSecret: ', secret)
-    // const evmAccount = web3.eth.accounts.privateKeyToAccount('0x'+ secret)
-    // console.log('evmAccount: ', evmAccount)
+  const changeMode = async (toMode) => {
+    if (mode === PluginType.ChooseWallet) {
+      if (toMode === PluginType.BrowserWallet) {
+        await BrowserWallet.init();
+      }
+    }
+    setMode(toMode);
   }
 
   const showNotification = () => {
@@ -419,12 +547,12 @@ export default function UserProfile() {
                   </Typography>
                 </GridItem>
                 <GridItem md={1}>
-                  <Button  onClick={() => handleFixedClick(PluginType.Tip)}>Tip</Button>
+                  <Button onClick={() => handleFixedClick(PluginType.Tip)}>Tip</Button>
                 </GridItem>
               </GridContainer>
             </CardHeader>
             <CardBody>
-              <img src={imgContent} height="300" width="300"/>
+              <img src={imgContent} height="300" width="300" />
             </CardBody>
             <CardContent>
               <Typography variant="body2" color="text.secondary">
@@ -502,26 +630,43 @@ export default function UserProfile() {
           </Card>
           <Card profile>
             <CardBody>
-              <Wallet handleFixedClick={handleFixedClick} createAnOnlineWallet={createAnOnlineWallet} walletDetailInfo={walletDetailInfo} claimEvmAddress={claimEvmAddressLocal}/>
+              <Wallet
+                mode={mode}
+                changeMode={changeMode}
+                handleFixedClick={handleFixedClick}
+
+                SubWalletInfo={SubWalletInfo}
+                BrowserWallet={BrowserWallet}
+                ExtensionWallet={ExtensionWallet}
+
+                balance={balance}
+                remainBandwidth={remainBandwidth}
+                ss58Addr={ss58Addr}
+                connectedEvmAddr={connectedEvmAddr}
+                bindedEvmAddr={bindedEvmAddr}
+                tokenInfo={tokenInfo}
+              />
               <div
-                  className={classnames("fixed-plugin")}
+                className={classnames("fixed-plugin")}
               >
                 <div id="fixedPluginClasses" className={fixedClasses}>
                   <div onClick={handleFixedClick}>
                     <i className="fa fa-exchange fa-2x" />
-                    </div>
-                      <WalletPlugin
-                          handleClick={handleFixedClick}
-                          fixedClasses={fixedClasses}
-                          pluginTitle="Create Bein's Erc20 Token"
-                          pluginType={pluginTypeApply}
-                          additionInfo={additionInfo}
-                          stakeForBandwidth={stakeForBandwidth}
-                          tipUser={tipUser}
-                          createToken={createToken}
-                          tipUserByToken={tipUserByToken}
-                          tokenInfo={walletDetailInfo ?  walletDetailInfo.tokenInfo : []}
-                      />
+                  </div>
+                  <WalletPlugin
+                    handleClick={handleFixedClick}
+                    fixedClasses={fixedClasses}
+                    pluginTitle="Create Bein's Erc20 Token"
+                    pluginType={pluginTypeApply}
+                    mnemonic={mnemonic}
+
+                    stakeForBandwidth={mode === PluginType.BrowserWallet ? BrowserWallet.stakeForBandwidth : ExtensionWallet.stakeForBandwidth}
+                    unstakeAll={mode === PluginType.BrowserWallet ? BrowserWallet.unstakeAll : ExtensionWallet.unstakeAll}
+                    tipUser={mode === PluginType.BrowserWallet ? BrowserWallet.tipUser : ExtensionWallet.tipUser}
+                    createToken={mode === PluginType.BrowserWallet ? BrowserWallet.createToken : ExtensionWallet.createToken}
+                    tipUserByToken={mode === PluginType.BrowserWallet ? BrowserWallet.tipUserByToken : ExtensionWallet.tipUserByToken}
+                    tokenInfo={tokenInfo}
+                  />
                 </div>
               </div>
             </CardBody>
@@ -539,4 +684,9 @@ export default function UserProfile() {
       </GridContainer>
     </div>
   );
+}
+
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }

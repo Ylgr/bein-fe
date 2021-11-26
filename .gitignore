@@ -28,3 +28,5 @@ package-lock.json
 commit.sh
 
 .idea
+
+config.sh

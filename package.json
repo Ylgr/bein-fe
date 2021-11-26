@@ -20,7 +20,8 @@
     "react-scripts": "4.0.3",
     "react-swipeable-views": "0.13.9",
     "web3": "^1.6.1",
-    "@polkadot/extension-dapp": "^0.41.1"
+    "@polkadot/extension-dapp": "^0.41.1",
+    "bn.js": "^5.2.0"
   },
   "scripts": {
     "start": "NODE_TLS_REJECT_UNAUTHORIZED=0 react-scripts start",
