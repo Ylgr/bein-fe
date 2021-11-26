@@ -10,8 +10,10 @@ import Card from "components/Card/Card.js";
 import CardHeader from "components/Card/CardHeader.js";
 import CardBody from "components/Card/CardBody.js";
 import CardAvatar from "components/Card/CardAvatar.js";
-import avatar from "assets/img/faces/marc.jpg";
-import imgContent from "assets/img/sidebar-2.jpg";
+import avatar from "assets/img/faces/bob.png";
+import alice from "assets/img/faces/alice.jpeg";
+import eve from "assets/img/faces/eve.jpeg";
+import imgContent from "assets/img/polkadot-apac.png";
 import {Avatar, CardActions, CardContent, CardMedia, Link, Typography} from "@material-ui/core";
 import CardFooter from "../../components/Card/CardFooter";
 import PluginType from "../../components/Plugin/PluginType";
@@ -25,6 +27,9 @@ import Web3 from 'web3';
 import BN from 'bn.js';
 import FactoryAbi from "../../abi/Factory.json"
 import TokenAbi from "../../abi/Token.json"
+import HourglassFull from "@material-ui/icons/HourglassFull";
+import Done from "@material-ui/icons/Done";
+import Snackbar from "components/Snackbar/Snackbar.js";
 
 const styles = {
   cardCategoryWhite: {
@@ -54,6 +59,8 @@ export default function UserProfile() {
   const [walletInfo, setWalletInfo] = React.useState(null)
   const [walletDetailInfo, setWalletDetailInfo] = React.useState(null)
   const [substrateApi, setSubstrateApi] = React.useState(null)
+  const [isNotification, setIsNotification] = React.useState(false)
+  const [notificationInfo, setNotificationInfo] = React.useState({})
   const keyring = new Keyring({ type: 'sr25519'});
   const web3 = new Web3("http://192.53.173.173:9933");
   const oneUnit = new BN("1000000000000000000")
@@ -63,7 +70,6 @@ export default function UserProfile() {
     const mnemonic = localStorage.getItem("bein_mnemonic")
     if(mnemonic && (!walletInfo || walletInfo.mnemonic !== mnemonic)) {
       cryptoWaitReady().then(() => {
-        console.log('Olala')
         const pair = keyring.addFromUri(mnemonic, null)
         setWalletInfo({
           mnemonic: mnemonic,
@@ -81,7 +87,6 @@ export default function UserProfile() {
       api = await ApiPromise.create({ provider: wsProvider })
       setSubstrateApi(api)
     }
-    console.log('address: ', address)
 
     if(address) {
       const { nonce, data: balance } = await api.query.system.account(address)
@@ -115,9 +120,20 @@ export default function UserProfile() {
 
   const tipUser = async (address, amount) => {
     const detailAmount = new BN(amount).mul(oneUnit)
+    setNotificationInfo({
+      color: 'info',
+      message: `Tipping ${amount} to ${address}`,
+      icon: HourglassFull
+    })
+    setIsNotification(true)
     await substrateApi.tx.balances.transfer(address, detailAmount).signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
       if (status.isFinalized) {
         getDetailWalletInfo(walletDetailInfo.address)
+        setNotificationInfo({
+          color: 'success',
+          message: `Tipping ${amount} to ${address} success!`,
+          icon: Done
+        })
       }
     })
     handleFixedClick(PluginType.DoNothing)
@@ -146,20 +162,48 @@ export default function UserProfile() {
       data: transEncodeAbi,
       nonce: currentNonce
     }
-    console.log('tx: ', tx)
+    setNotificationInfo({
+      color: 'info',
+      message: `Tipping ${amount} of ${tokenAddress} to ${address}`,
+      icon: HourglassFull
+    })
+    setIsNotification(true)
+
     const signed = await web3.eth.accounts.signTransaction(tx, Buffer.from(mnemonicToMiniSecret(localStorage.getItem('bein_mnemonic'))).toString('hex'))
-    console.log('signed: ', signed)
-    const receipt = await web3.eth.sendSignedTransaction(signed.rawTransaction)
-    console.log('receipt: ', receipt)
+    web3.eth.sendSignedTransaction(signed.rawTransaction).on('error', () => {
+      setNotificationInfo({
+        color: 'danger',
+        message: error.message,
+        icon: HourglassFull
+      })
+      setIsNotification(true)
+    }).on('confirmation', (confirmationNumber) => {
+      setNotificationInfo({
+        color: 'success',
+        message: `Tipping ${amount} of ${tokenAddress} to ${address} success!`,
+        icon: Done
+      })
+      setIsNotification(true)
+      handleFixedClick(PluginType.DoNothing)
 
-
-    handleFixedClick(PluginType.DoNothing)
+    })
   }
 
   const stakeForBandwidth = async (amount) => {
     const detailAmount = new BN(amount).mul(oneUnit)
+    setNotificationInfo({
+      color: 'info',
+      message: `Staking ${amount}`,
+      icon: HourglassFull
+    })
+    setIsNotification(true)
     await substrateApi.tx.feeless.stakeBic(detailAmount).signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
       if (status.isFinalized) {
+        setNotificationInfo({
+          color: 'success',
+          message: `Staking ${amount} success!`,
+          icon: Done
+        })
         getDetailWalletInfo(walletDetailInfo.address)
       }
     })
@@ -344,6 +388,13 @@ export default function UserProfile() {
     // console.log('evmAccount: ', evmAccount)
   }
 
+  const showNotification = () => {
+    setIsNotification(true);
+    setTimeout(function () {
+      setIsNotification(false);
+    }, 6000);
+  }
+
   const classes = useStyles();
   return (
     <div>
@@ -354,14 +405,14 @@ export default function UserProfile() {
               <GridContainer>
                 <GridItem md={1}>
                   <CardAvatar plain>
-                    <a href="#pablo" onClick={(e) => e.preventDefault()}>
+                    <a href="#bob" onClick={(e) => e.preventDefault()}>
                       <img src={avatar} alt="..."  height="50" width="50"/>
                     </a>
                   </CardAvatar>
                 </GridItem>
                 <GridItem md={10}>
                   <Typography variant="body1">
-                    Alec Thompson
+                    Bob
                   </Typography>
                   <Typography variant="subtitle1">
                     September 14, 2016
@@ -377,20 +428,19 @@ export default function UserProfile() {
             </CardBody>
             <CardContent>
               <Typography variant="body2" color="text.secondary">
-                This impressive paella is a perfect party dish and a fun meal to cook
-                together with your guests. Add 1 cup of frozen peas along with the mussels,
-                if you like.
+                The Polkadot Hackathon Series kicking off in Asia Pacific (APAC) on October 22.
+                And I am in!
               </Typography>
             </CardContent>
             <CardFooter chart>
                 <GridItem md={2}>
                   <CardAvatar plain>
-                    <a href="#pablo" onClick={(e) => e.preventDefault()}>
-                      <img src={avatar} alt="..."  height="25" width="25"/>
+                    <a href="#alice" onClick={(e) => e.preventDefault()}>
+                      <img src={alice} alt="..."  height="25" width="25"/>
                     </a>
                   </CardAvatar>
                   <Typography variant="body2">
-                    Alec Thompson
+                    Alice
                   </Typography>
 
                 </GridItem>
@@ -399,7 +449,7 @@ export default function UserProfile() {
                     Sep 14, 2016
                   </Typography>
                   <Typography variant="body2">
-                    hahaha
+                    That's great! May I join as well?
                   </Typography>
                 </GridItem>
                 <GridItem md={1}>
@@ -409,12 +459,12 @@ export default function UserProfile() {
             <CardFooter chart>
                 <GridItem md={2}>
                   <CardAvatar plain>
-                    <a href="#pablo" onClick={(e) => e.preventDefault()}>
-                      <img src={avatar} alt="..."  height="25" width="25"/>
+                    <a href="#eve" onClick={(e) => e.preventDefault()}>
+                      <img src={eve} alt="..."  height="25" width="25"/>
                     </a>
                   </CardAvatar>
                   <Typography variant="body2">
-                    Alec Thompson
+                    Eve
                   </Typography>
 
                 </GridItem>
@@ -423,7 +473,7 @@ export default function UserProfile() {
                     Sep 14, 2016
                   </Typography>
                   <Typography variant="body2">
-                    hahaha
+                    I'm excited too, let's team up.
                   </Typography>
                 </GridItem>
                 <GridItem md={1}>
@@ -435,19 +485,17 @@ export default function UserProfile() {
         <GridItem xs={12} sm={12} md={4}>
           <Card profile>
             <CardAvatar profile>
-              <a href="#pablo" onClick={(e) => e.preventDefault()}>
+              <a href="#bob" onClick={(e) => e.preventDefault()}>
                 <img src={avatar} alt="..." />
               </a>
             </CardAvatar>
             <CardBody profile>
               <h6 className={classes.cardCategory}>CEO / CO-FOUNDER</h6>
-              <h4 className={classes.cardTitle}>Alec Thompson</h4>
+              <h4 className={classes.cardTitle}>Bob</h4>
               <p className={classes.description}>
-                Don{"'"}t be scared of the truth because we need to restart the
-                human foundation in truth And I love you like Kanye loves Kanye
-                I love Rick Owens’ bed design but the back is...
+                Just an virtual person to using as an example.
               </p>
-              <Button color="primary" round>
+              <Button color="primary" round disabled>
                 Follow
               </Button>
             </CardBody>
@@ -478,7 +526,15 @@ export default function UserProfile() {
               </div>
             </CardBody>
           </Card>
-
+          <Snackbar
+              place="tr"
+              color={notificationInfo.color}
+              icon={notificationInfo.icon}
+              message={notificationInfo.message}
+              open={isNotification}
+              closeNotification={() => setIsNotification(false)}
+              close
+          />
         </GridItem>
       </GridContainer>
     </div>
