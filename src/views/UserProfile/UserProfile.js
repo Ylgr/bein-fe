@@ -29,6 +29,7 @@ import { web3Accounts, web3Enable, web3FromAddress } from '@polkadot/extension-d
 import Web3 from 'web3';
 import BN from 'bn.js';
 import HourglassFull from "@material-ui/icons/HourglassFull";
+import SmsFailedIcon from '@material-ui/icons/SmsFailed';
 import Done from "@material-ui/icons/Done";
 import Snackbar from "components/Snackbar/Snackbar.js";
 
@@ -78,29 +79,15 @@ export default function UserProfile() {
 
   // CONST
   const nodeurl = '192.53.173.173:9944';
-  const nodeweb3 = '192.53.173.173:9933'
+  const nodeweb3 = '192.53.173.173:9933';
   const keyring = new Keyring({ type: 'sr25519' });
   const oneUnit = new BN("1000000000000000000");
-  const factoryAddress = '0x587cF36c2a144Ff60625CB0c4CA9213A2DED4f5d';
+  const factoryAddress = '0x8459c3A7929dcF26323Ad0D42a34A69A63aB0ADa';
 
-  // React.useEffect(() => {
-  //   const mnemonic = localStorage.getItem("bein_mnemonic")
-  //   if(mnemonic && (!walletInfo || walletInfo.mnemonic !== mnemonic)) {
-  //     cryptoWaitReady().then(() => {
-  //       console.log('Olala')
-  //       const pair = keyring.addFromUri(mnemonic, null)
-  //       setWalletInfo({
-  //         mnemonic: mnemonic,
-  //         pair: pair
-  //       })
-  //       browserWallet.getDetailWalletInfo(pair.address)
-  //     })
-  //   }
-  // }, [walletInfo])
-
-  React.useEffect(() => {
-
-    return SubWalletInfo.unsubAll();
+  React.useEffect(() => {  
+    return () => {
+      SubWalletInfo.unsubAll();
+    }
   });
 
 
@@ -121,7 +108,7 @@ export default function UserProfile() {
       gasPrice: gasPrice.toString(),
       gas: gasLimit.toString()
     }
-    console.log(tx);
+    console.log('init tx', tx);
     return tx;
   }
 
@@ -223,12 +210,14 @@ export default function UserProfile() {
         mnemonic: mnemonic,
         pair: pair
       });
+      // noti
       setNotificationInfo({
         color: 'success',
         icon: Done,
         message: 'create wallet done'
-      })
-      setIsNotification(true)
+      });
+      showNotification();
+
       const evmAddr = (await api.query.evmAccounts.evmAddresses(pair.address)).toString();
       console.log(evmAddr);
       if (evmAddr !== '') {
@@ -239,6 +228,12 @@ export default function UserProfile() {
     },
 
     claimEvmAddressLocal: async () => {
+      setNotificationInfo({
+        color: 'warning',
+        icon: HourglassFull,
+        message: 'creating evm address'
+      });
+      setIsNotification(true);
       const secret = mnemonicToMiniSecret(walletInfo.mnemonic)
       const account = web3.eth.accounts.privateKeyToAccount("0x" + Buffer.from(secret).toString('hex'));
       const msgClaim = `bein evm:${Buffer.from(walletInfo.pair.publicKey).toString('hex')}`;
@@ -248,14 +243,37 @@ export default function UserProfile() {
         .signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
           if (status.isFinalized) {
             setBindedEvmAddr(account.address);
+            // noti
+            setNotificationInfo({
+              color: 'success',
+              icon: Done,
+              message: 'created and binded evm address'
+            });
+            showNotification();
           }
-        }).catch(console.log)
+        }).catch((err) => {
+          console.log(err);
+          // noti
+          setNotificationInfo({
+            color: 'danger',
+            icon: SmsFailedIcon,
+            message: 'failed to binded evm address'
+          });
+          showNotification();
+        })
     },
 
     createToken: async (name, symbol, totalSupply) => {
       console.log(name);
       console.log(symbol);
       console.log(totalSupply);
+      //noti
+      setNotificationInfo({
+        color: 'warning',
+        icon: HourglassFull,
+        message: 'creating new token'
+      });
+      setIsNotification(true);
       try {
         const factoryContract = new web3.eth.Contract(FactoryAbi, factoryAddress);
         const data = factoryContract.methods.createNewToken(name, symbol, totalSupply).encodeABI();
@@ -272,54 +290,176 @@ export default function UserProfile() {
         }
         localStorage.setItem(bindedEvmAddr, tokenList);
         await getTokenInfo(bindedEvmAddr);
+
+        setNotificationInfo({
+          color: 'success',
+          icon: Done,
+          message: 'created new token'
+        });
+        showNotification(true);
       } catch (err) {
         console.log(err);
-        alert('create token failed. try again');
+        setNotificationInfo({
+          color: 'danger',
+          icon: SmsFailedIcon,
+          message: 'failed to create new token'
+        });
+        showNotification(true);
       }
     },
 
     tipUserByToken: async (address, amount, tokenAddress) => {
+      // noti
+      setNotificationInfo({
+        color: 'warning',
+        icon: HourglassFull,
+        message: 'tipping user by token'
+      });
+      setIsNotification(true);
+
       const detailAmount = new BN(amount).mul(oneUnit);
       const tokenContract = new web3.eth.Contract(TokenAbi, tokenAddress);
       const data = tokenContract.methods.transfer(address, detailAmount).encodeABI();
       const tx = await initTx(bindedEvmAddr, tokenAddress, '0', data);
-      const signed = await web3.eth.accounts.signTransaction(tx, Buffer.from(mnemonicToMiniSecret(mnemonic)).toString('hex'))
-      const receipt = await web3.eth.sendSignedTransaction(signed.rawTransaction);
-      await getTokenInfo(bindedEvmAddr);
-      handleFixedClick(PluginType.DoNothing)
+      try {
+        const signed = await web3.eth.accounts.signTransaction(tx, Buffer.from(mnemonicToMiniSecret(mnemonic)).toString('hex'))
+        const receipt = await web3.eth.sendSignedTransaction(signed.rawTransaction);
+        await getTokenInfo(bindedEvmAddr);
+        handleFixedClick(PluginType.DoNothing);
+        // noti
+        setNotificationInfo({
+          color: 'success',
+          icon: Done,
+          message: 'tipped user by token'
+        });
+        showNotification();
+      } catch (err) {
+        console.log(err);
+        //noti
+        setNotificationInfo({
+          color: 'danger',
+          icon: SmsFailedIcon,
+          message: 'failed to tip user by token'
+        });
+        showNotification();
+      }
     },
 
     tipUser: async (address, amount) => {
+      // noti
+      setNotificationInfo({
+        color: 'warning',
+        icon: HourglassFull,
+        message: 'tipping user by BIC'
+      });
+      setIsNotification(true);
+
       const detailAmount = new BN(amount).mul(oneUnit)
       const subCall = substrateApi.tx.balances.transfer(address, detailAmount);
-      await substrateApi.tx.feeless.feelessCall(subCall).signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
-        if (status.isFinalized) {
-          console.log('tipUser done');
-        }
-      })
-      handleFixedClick(PluginType.DoNothing)
+      try {
+        await substrateApi.tx.feeless.feelessCall(subCall).signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
+          if (status.isFinalized) {
+            console.log('tipUser done');
+          }
+        })
+        //noti
+        setNotificationInfo({
+          color: 'success',
+          icon: Done,
+          message: 'tipped user by BIC'
+        });
+        showNotification();
+        handleFixedClick(PluginType.DoNothing)
+      } catch (err) {
+        console.log(err);
+        //noti
+        setNotificationInfo({
+          color: 'danger',
+          icon: SmsFailedIcon,
+          message: 'failed to tip user by BIC'
+        });
+        showNotification();
+      }
     },
 
     stakeForBandwidth: async (amount) => {
-      const detailAmount = new BN(amount).mul(oneUnit)
-      await substrateApi.tx.feeless.stakeBic(detailAmount).signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
-        if (status.isFinalized) {
-          console.log('staked');
-        }
+      // noti
+      setNotificationInfo({
+        color: 'warning',
+        icon: HourglassFull,
+        message: 'staking BIC for free bandwidth'
       });
+      setIsNotification(true);
+
+      const detailAmount = new BN(amount).mul(oneUnit);
+      try {
+        await substrateApi.tx.feeless.stakeBic(detailAmount).signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
+          if (status.isFinalized) {
+            console.log('staked');
+          }
+        });
+        //noti
+        setNotificationInfo({
+          color: 'success',
+          icon: Done,
+          message: 'Stake BIC successfully'
+        });
+        showNotification();
+      } catch (err) {
+        console.log(err);
+        // noti
+        setNotificationInfo({
+          color: 'danger',
+          icon: SmsFailedIcon,
+          message: 'Failed to stake BIC'
+        });
+        showNotification();
+      }
     },
 
     unstakeAll: async() => {
-      await substrateApi.tx.feeless.unstakeBic().signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
-        if (status.isFinalized) {
-          console.log('unstaked');
-        }
-      })
+      // noti
+      setNotificationInfo({
+        color: 'warning',
+        icon: HourglassFull,
+        message: 'staking BIC for free bandwidth'
+      });
+      setIsNotification(true);
+
+      try {
+        await substrateApi.tx.feeless.unstakeBic().signAndSend(walletInfo.pair, ({ events = [], status, dispatchError }) => {
+          if (status.isFinalized) {
+            console.log('unstaked');
+          }
+        });
+        //noti
+        setNotificationInfo({
+          color: 'success',
+          icon: Done,
+          message: 'Unstaked all BIC'
+        });
+        showNotification();
+      } catch (err) {
+        console.log(err);
+        setNotificationInfo({
+          color: 'danger',
+          icon: SmsFailedIcon,
+          message: 'Failed unstake'
+        });
+        showNotification();
+      }
     }
   }
 
   const ExtensionWallet = {
     connectMetamask: async () => {
+      //noti
+      setNotificationInfo({
+        color: "warning",
+        icon: HourglassFull,
+        message: "connecting to metamask"
+      });
+      setIsNotification(true);
       if (!!window.ethereum) {
         const web3 = new Web3(window.ethereum);
         await window.ethereum.request({ method: "eth_requestAccounts" })
@@ -330,89 +470,161 @@ export default function UserProfile() {
         window.ethereum.on('accountsChanged', (addresses) => {
           setConnectEvmAddr(addresses[0])
         });
+        //noti
+        setNotificationInfo({
+          color: "success",
+          icon: Done,
+          message: "connected to metamask"
+        });
+        showNotification();
       } else {
-        alert('Cannot detect metamask wallet');
+        //noti
+        setNotificationInfo({
+          color: "danger",
+          icon: SmsFailedIcon,
+          message: "cannot detect metamask"
+        });
+        showNotification();
       }
     },
 
     connectPolkadotWallet: async () => {
-      const extension = await web3Enable('Polkadot Hackathon');
-      if (extension.length === 0) {
-        alert('Connect detect polkadot wallet');
-        return;
-      }
-      const allAccounts = await web3Accounts();
-      if (allAccounts.length === 0) {
-        alert('Please create an account and try again');
-        return;
-      }
-      setSS58Addr(allAccounts[0].address);
+       //noti
+       setNotificationInfo({
+        color: "warning",
+        icon: HourglassFull,
+        message: "connecting to polkadot wallet"
+      });
+      setIsNotification(true);
 
-      const wsProvider = new WsProvider(`ws://${nodeurl}`);
-      const api = await ApiPromise.create({ provider: wsProvider });
-      setSubstrateApi(api);
       try {
+        const extension = await web3Enable('Polkadot Hackathon');
+        if (extension.length === 0) {
+          throw new Error('Connect detect polkadot wallet');
+        }
+        const allAccounts = await web3Accounts();
+        if (allAccounts.length === 0) {
+          throw new Error('Please create an account and try again');
+        }
+        setSS58Addr(allAccounts[0].address);
+
+        const wsProvider = new WsProvider(`ws://${nodeurl}`);
+        const api = await ApiPromise.create({ provider: wsProvider });
+        setSubstrateApi(api);
         const evmAddr = (await api.query.evmAccounts.evmAddresses(allAccounts[0].address)).toString();
         if (evmAddr !== '') {
           setBindedEvmAddr(evmAddr)
         }
+        //noti
+        setNotificationInfo({
+          color: "success",
+          icon: Done,
+          message: "connected to polkadot wallet"
+        });
+        showNotification();
       } catch (err) {
-        console.log(err)
+        console.log(err);
+        //noti
+        setNotificationInfo({
+          color: "danger",
+          icon: SmsFailedIcon,
+          message: "cannot detect polkadot wallet"
+        });
+        showNotification();
       }
     },
 
     bindingEVMAddress: async () => {
-      if (!!bindedEvmAddr) {
-        alert('EVM address already binded');
-        return;
-      }
-      if (!ss58Addr || !connectedEvmAddr) {
-        alert('Need connecting to 2 wallets');
-        return;
-      }
-      if (!substrateApi) {
-        alert('wait a few secs to construct api and try again');
-        return;
-      }
-      const publicKey = decodeAddress(ss58Addr);
-      const msg = `bein evm:${Buffer.from(publicKey).toString('hex')}`
-      let ok = true;
-      const signature = await web3.eth.personal.sign(msg, connectedEvmAddr)
-        .catch(err => {
-          console.log(err);
-          alert('binding failed');
-          ok = false;
-        });
-      if (!ok) {
-        return;
-      }
+      //noti
+      setNotificationInfo({
+        color: "warning",
+        icon: HourglassFull,
+        message: "binding evm address"
+      });
+      setIsNotification(true);
 
-      const injector = await web3FromAddress(ss58Addr);
-      await substrateApi.tx.evmAccounts
-        .claimAccount(connectedEvmAddr, web3.utils.hexToBytes(signature))
-        .signAndSend(ss58Addr, {
-          signer: injector.signer
-        }, ({ events = [], status, dispatchError }) => {
-          if (status.isFinalized) {
-            console.log(`${ss58Addr} has bound with EVM address: ${connectedEvmAddr}`)
-            setBindedEvmAddr(connectedEvmAddr);
-          }
-        })
-        .catch(err => {
-          alert('binding failed');
-          console.log(err);
-        })
+      try {
+        if (!!bindedEvmAddr) {
+          throw new Error('EVM address already binded');
+        }
+        if (!ss58Addr || !connectedEvmAddr) {
+          throw new Error('Need connecting to 2 wallets');
+        }
+        if (!substrateApi) {
+          throw new Error('wait a few secs to construct api and try again');
+        }
+        const publicKey = decodeAddress(ss58Addr);
+        const msg = `bein evm:${Buffer.from(publicKey).toString('hex')}`
+        let ok = true;
+        const signature = await web3.eth.personal.sign(msg, connectedEvmAddr)
+          .catch(err => {
+            console.log(err);
+            ok = false;
+          });
+        if (!ok) {
+          throw new Error('signed failed');
+        }
+
+        const injector = await web3FromAddress(ss58Addr);
+        await substrateApi.tx.evmAccounts
+          .claimAccount(connectedEvmAddr, web3.utils.hexToBytes(signature))
+          .signAndSend(ss58Addr, {
+            signer: injector.signer
+          }, ({ events = [], status, dispatchError }) => {
+            if (status.isFinalized) {
+              console.log(`${ss58Addr} has bound with EVM address: ${connectedEvmAddr}`)
+              setBindedEvmAddr(connectedEvmAddr);
+            }
+          })
+        
+        //noti
+        setNotificationInfo({
+          color: "success",
+          icon: Done,
+          message: "binded evm address"
+        });
+        showNotification();
+      } catch (err) {
+        console.log(err);
+        //noti
+        setNotificationInfo({
+          color: "danger",
+          icon: SmsFailedIcon,
+          message: "failed to bind evm address"
+        });
+        showNotification();
+      }
     },
 
     createToken: async (name, symbol, totalSupply) => {
       if (!connectedEvmAddr) {
-        alert('please connect metamask');
+        //noti
+        setNotificationInfo({
+          color: "danger",
+          icon: HourglassFull,
+          message: "please connect evm address"
+        });
+        setIsNotification(true);
         return;
       }
       if (!!bindedEvmAddr && (bindedEvmAddr.toUpperCase() !== connectedEvmAddr.toUpperCase())) {
-        alert('please connect metamask with binded account');
+        //noti
+        setNotificationInfo({
+          color: "danger",
+          icon: HourglassFull,
+          message: "please connect metamask with binded account"
+        });
+        setIsNotification(true);
         return;
       }
+
+      //noti
+      setNotificationInfo({
+        color: "warning",
+        icon: HourglassFull,
+        message: "creating erc20 token"
+      });
+      setIsNotification(true);
 
       try {
         const factoryContract = new web3.eth.Contract(FactoryAbi, factoryAddress);
@@ -422,7 +634,7 @@ export default function UserProfile() {
 
         let cntSleep = 0;
         let receipt;
-        while (cntSleep <= 3000 * 10) {
+        while (cntSleep <= 6000 * 3) {
           receipt = await web3.eth.getTransactionReceipt(txHash);
           if (receipt === null) {
             await sleep(3000);
@@ -448,61 +660,169 @@ export default function UserProfile() {
         }
         localStorage.setItem(bindedEvmAddr, tokenList);
         await getTokenInfo(bindedEvmAddr);
+
+        //noti
+        setNotificationInfo({
+          color: "success",
+          icon: Done,
+          message: "created new token"
+        });
+        showNotification();
       } catch (err) {
         console.log(err);
-        alert('create token failed. try again');
+        //noti
+        setNotificationInfo({
+          color: "danger",
+          icon: SmsFailedIcon,
+          message: "met some error when make txs with metamask"
+        });
+        showNotification();
       }
     },
 
     tipUser: async (address, amount) => {
-      const detailAmount = new BN(amount).mul(oneUnit);
-      const subCall = substrateApi.tx.balances.transfer(address, detailAmount);
-      const injector = await web3FromAddress(ss58Addr);
-      await substrateApi.tx.feeless.feelessCall(subCall).signAndSend(ss58Addr, {
-        signer: injector.signer
-      }, ({ events = [], status, dispatchError }) => {
-        if (status.isFinalized) {
-          console.log('ok tip with extension wallet');
-        }
-      })
-      .catch(err => {
-        alert('binding failed');
+      //noti
+      setNotificationInfo({
+        color: "warning",
+        icon: HourglassFull,
+        message: "tipping user with BIC"
+      });
+      setIsNotification(true);
+      try {
+        const detailAmount = new BN(amount).mul(oneUnit);
+        const subCall = substrateApi.tx.balances.transfer(address, detailAmount);
+        const injector = await web3FromAddress(ss58Addr);
+        await substrateApi.tx.feeless.feelessCall(subCall).signAndSend(ss58Addr, {
+          signer: injector.signer
+        }, ({ events = [], status, dispatchError }) => {
+          if (status.isFinalized) {
+            console.log('ok tip with extension wallet');
+          }
+        })
+        handleFixedClick(PluginType.DoNothing)
+        //noti
+        setNotificationInfo({
+          color: "success",
+          icon: Done,
+          message: "tipped user with BIC"
+        });
+        showNotification();
+      } catch (err) {
         console.log(err);
-      })
-      handleFixedClick(PluginType.DoNothing)
+        //noti
+        setNotificationInfo({
+          color: "danger",
+          icon: SmsFailedIcon,
+          message: "failed to tip user with BIC"
+        });
+        showNotification();
+      }
     },
 
     tipUserByToken: async (address, amount, tokenAddress) => {
-      const detailAmount = new BN(amount).mul(oneUnit);
-      const tokenContract = new web3.eth.Contract(TokenAbi, tokenAddress);
-      const data = tokenContract.methods.transfer(address, detailAmount).encodeABI();
-      const tx = await initTx(bindedEvmAddr, tokenAddress, '0', data);
-      await sendTxMetamask(tx);
-      await getTokenInfo(bindedEvmAddr);
-      handleFixedClick(PluginType.DoNothing)
+      //noti
+      setNotificationInfo({
+        color: "warning",
+        icon: HourglassFull,
+        message: "tipping user with token"
+      });
+      setIsNotification(true);
+      try {
+        const detailAmount = new BN(amount).mul(oneUnit);
+        const tokenContract = new web3.eth.Contract(TokenAbi, tokenAddress);
+        const data = tokenContract.methods.transfer(address, detailAmount).encodeABI();
+        const tx = await initTx(bindedEvmAddr, tokenAddress, '0', data);
+        await sendTxMetamask(tx);
+        await getTokenInfo(bindedEvmAddr);
+        handleFixedClick(PluginType.DoNothing);
+        //noti
+        setNotificationInfo({
+          color: "success",
+          icon: Done,
+          message: "tipped user with token"
+        });
+        showNotification();
+      } catch (err) {
+        console.log(err);
+        //noti
+        setNotificationInfo({
+          color: "danger",
+          icon: SmsFailedIcon,
+          message: "failed to tip user with token"
+        });
+        showNotification();
+      }
     },
 
     stakeForBandwidth: async (amount) => {
-      const detailAmount = new BN(amount).mul(oneUnit);
-      const injector = await web3FromAddress(ss58Addr);
-      await substrateApi.tx.feeless.stakeBic(detailAmount).signAndSend(ss58Addr, {
-        signer: injector.signer
-      }, ({ events = [], status, dispatchError }) => {
-        if (status.isFinalized) {
-          console.log('ok staked with extension wallet');
-        }
-      })
+      // noti
+      setNotificationInfo({
+        color: 'warning',
+        icon: HourglassFull,
+        message: 'staking BIC for free bandwidth'
+      });
+      setIsNotification(true);
+      try {
+        const detailAmount = new BN(amount).mul(oneUnit);
+        const injector = await web3FromAddress(ss58Addr);
+        await substrateApi.tx.feeless.stakeBic(detailAmount).signAndSend(ss58Addr, {
+          signer: injector.signer
+        }, ({ events = [], status, dispatchError }) => {
+          if (status.isFinalized) {
+            console.log('ok staked with extension wallet');
+          }
+        });
+        //noti
+        setNotificationInfo({
+          color: 'success',
+          icon: Done,
+          message: 'Stake BIC successfully'
+        });
+        showNotification();
+      } catch (err) {
+        console.log(err);
+        setNotificationInfo({
+          color: 'danger',
+          icon: SmsFailedIcon,
+          message: 'Failed to stake BIC'
+        });
+        showNotification();
+      }
     },
 
     unstakeAll: async() => {
-      const injector = await web3FromAddress(ss58Addr);
-      await substrateApi.tx.feeless.unstakeBic().signAndSend(ss58Addr, {
-        signer: injector.signer
-      }, ({ events = [], status, dispatchError }) => {
-        if (status.isFinalized) {
-          console.log('ok staked with extension wallet');
-        }
-      })
+      // noti
+      setNotificationInfo({
+        color: 'warning',
+        icon: HourglassFull,
+        message: 'staking BIC for free bandwidth'
+      });
+      setIsNotification(true);
+      try {
+        const injector = await web3FromAddress(ss58Addr);
+        await substrateApi.tx.feeless.unstakeBic().signAndSend(ss58Addr, {
+          signer: injector.signer
+        }, ({ events = [], status, dispatchError }) => {
+          if (status.isFinalized) {
+            console.log('ok staked with extension wallet');
+          }
+        })
+        //noti
+        setNotificationInfo({
+          color: 'success',
+          icon: Done,
+          message: 'Unstaked all BIC'
+        });
+        showNotification();
+      } catch (err) {
+        console.log(err);
+        setNotificationInfo({
+          color: 'danger',
+          icon: SmsFailedIcon,
+          message: 'Failed unstake'
+        });
+        showNotification();
+      }
     }
   }
 
@@ -528,7 +848,7 @@ export default function UserProfile() {
     setIsNotification(true);
     setTimeout(function () {
       setIsNotification(false);
-    }, 6000);
+    }, 3000);
   }
 
   const classes = useStyles();
