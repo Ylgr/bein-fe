@@ -1,13 +1,15 @@
 {
-  "name": "material-dashboard-react",
+  "name": "example-bein-group-demo",
   "version": "1.10.0",
-  "description": "Material Dashboard React. Coded by Creative Tim",
+  "description": "Demo page for bein group using Material Dashboard React.Coded by Creative Tim.",
   "private": false,
   "main": "dist/index.js",
   "dependencies": {
     "@material-ui/core": "4.11.4",
     "@material-ui/icons": "4.11.2",
     "@polkadot/api": "^6.9.1",
+    "@polkadot/extension-dapp": "^0.41.1",
+    "bn.js": "^5.2.0",
     "chartist": "0.10.1",
     "classnames": "2.3.1",
     "history": "5.0.0",
@@ -19,13 +21,12 @@
     "react-router-dom": "5.2.0",
     "react-scripts": "4.0.3",
     "react-swipeable-views": "0.13.9",
-    "web3": "^1.6.1",
-    "@polkadot/extension-dapp": "^0.41.1",
-    "bn.js": "^5.2.0"
+    "web3": "^1.6.1"
   },
   "scripts": {
     "start": "NODE_TLS_REJECT_UNAUTHORIZED=0 react-scripts start",
     "build": "react-scripts build",
+    "deploy": "gh-pages -d build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
     "install:clean": "rm -rf node_modules/ && rm -rf package-lock.json && npm install && npm start",
@@ -39,12 +40,9 @@
     "url": "git+https://github.com/creativetimofficial/material-dashboard-react.git"
   },
   "keywords": [],
-  "author": "Creative Tim <hello@creative-tim.com> (https://www.creative-tim.com/)",
+  "author": "Bein team && Creative Tim <hello@creative-tim.com> (https://www.creative-tim.com/)",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/creativetimofficial/material-dashboard-react/issues"
-  },
-  "homepage": "https://creativetimofficial.github.io/material-dashboard-react/#/dashboard",
+  "homepage": "https://ylgr.github.io/bein-fe/",
   "optionalDependencies": {
     "@babel/core": "7.14.0",
     "typescript": "4.2.4"
@@ -52,6 +50,7 @@
   "devDependencies": {
     "eslint-config-prettier": "8.3.0",
     "eslint-plugin-prettier": "3.4.0",
+    "gh-pages": "^3.2.3",
     "gulp": "4.0.2",
     "gulp-append-prepend": "1.0.9",
     "prettier": "2.2.1"
