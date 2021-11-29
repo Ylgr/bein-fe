@@ -84,7 +84,7 @@ export default function UserProfile() {
   const oneUnit = new BN("1000000000000000000");
   const factoryAddress = '0x8459c3A7929dcF26323Ad0D42a34A69A63aB0ADa';
 
-  React.useEffect(() => {  
+  React.useEffect(() => {
     return () => {
       SubWalletInfo.unsubAll();
     }
@@ -576,7 +576,7 @@ export default function UserProfile() {
               setBindedEvmAddr(connectedEvmAddr);
             }
           })
-        
+
         //noti
         setNotificationInfo({
           color: "success",
