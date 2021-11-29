@@ -26,14 +26,12 @@ import { ApiPromise, WsProvider } from "@polkadot/api";
 import FactoryAbi from "../../abi/FactoryAbi.json";
 import TokenAbi from "../../abi/TokenAbi.json";
 import { web3Accounts, web3Enable, web3FromAddress } from '@polkadot/extension-dapp';
-
 import Web3 from 'web3';
 import BN from 'bn.js';
 import HourglassFull from "@material-ui/icons/HourglassFull";
 import Done from "@material-ui/icons/Done";
 import Snackbar from "components/Snackbar/Snackbar.js";
 
-import { symbolName } from "typescript";
 const styles = {
   cardCategoryWhite: {
     color: "rgba(255,255,255,.62)",
@@ -74,9 +72,13 @@ export default function UserProfile() {
   const [mnemonic, setMnemonic] = React.useState(null);
   const [walletInfo, setWalletInfo] = React.useState(null);
 
+  // notification
+  const [notificationInfo, setNotificationInfo] = React.useState({})
+  const [isNotification, setIsNotification] = React.useState(false)
+
   // CONST
-  const nodeurl = '127.0.0.1:9944';
-  const nodeweb3 = '127.0.0.1:9933'
+  const nodeurl = '192.53.173.173:9944';
+  const nodeweb3 = '192.53.173.173:9933'
   const keyring = new Keyring({ type: 'sr25519' });
   const oneUnit = new BN("1000000000000000000");
   const factoryAddress = '0x587cF36c2a144Ff60625CB0c4CA9213A2DED4f5d';
@@ -221,6 +223,12 @@ export default function UserProfile() {
         mnemonic: mnemonic,
         pair: pair
       });
+      setNotificationInfo({
+        color: 'success',
+        icon: Done,
+        message: 'create wallet done'
+      })
+      setIsNotification(true)
       const evmAddr = (await api.query.evmAccounts.evmAddresses(pair.address)).toString();
       console.log(evmAddr);
       if (evmAddr !== '') {
