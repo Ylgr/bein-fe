@@ -42,7 +42,7 @@
   "keywords": [],
   "author": "Bein team && Creative Tim <hello@creative-tim.com> (https://www.creative-tim.com/)",
   "license": "MIT",
-  "homepage": "https://ylgr.github.io/bein-fe/",
+  "homepage": "http://beinpolkadot.tk/",
   "optionalDependencies": {
     "@babel/core": "7.14.0",
     "typescript": "4.2.4"
